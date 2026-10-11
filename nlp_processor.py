@@ -5,9 +5,10 @@ from typing import Optional
 
 
 # ============================================================
-# COMMON TYPO CORRECTIONS
-# This is not a food database. Nutrition is retrieved from USDA.
+# COMMON SPELLING CORRECTIONS
+# Food information is retrieved dynamically from USDA.
 # ============================================================
+
 COMMON_CORRECTIONS = {
     "bananna": "banana",
     "banan": "banana",
@@ -51,17 +52,11 @@ PIECE_UNITS = {"piece", "pieces", "pc", "pcs", "item", "items"}
 
 ALL_UNITS = GRAM_UNITS | KILOGRAM_UNITS | MILLIGRAM_UNITS | PIECE_UNITS
 
-NUTRITION_KEYWORDS = {
-    "nutrition", "nutritional", "nutrients", "nutrient",
-    "calorie", "calories", "protein", "carbohydrate",
-    "carbohydrates", "carbs", "fat", "fiber", "fibre",
-    "vitamin", "vitamins", "mineral", "minerals", "healthy",
-}
-
 
 @dataclass
 class ParsedQuery:
     """Structured representation of a user's food query."""
+
     original_text: str
     food: Optional[str]
     quantity: Optional[float]
@@ -69,30 +64,38 @@ class ParsedQuery:
     intent: str
 
 
+# ============================================================
+# TEXT NORMALIZATION
+# ============================================================
+
 def normalize_text(text: str) -> str:
-    """Normalize user input."""
+    """Normalize user input while preserving decimal quantities."""
+
     if not isinstance(text, str):
         return ""
 
     text = text.lower().strip()
-    text = text.replace("Ã¢â‚¬â„¢", "'")
+    text = text.replace("’", "'")
     text = re.sub(r"[^a-z0-9.\s]", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+    text = re.sub(r"(?<!\d)\.(?!\d)", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def correct_word(word: str) -> str:
-    """Correct a known typo."""
+    """Correct a known spelling mistake."""
+
     return COMMON_CORRECTIONS.get(word, word)
 
 
 def correct_spelling(text: str) -> str:
     """Correct known spelling mistakes word by word."""
+
     return " ".join(correct_word(word) for word in text.split())
 
 
 def parse_number(value: str) -> Optional[float]:
     """Convert a number or number word to float."""
+
     value = value.strip().lower()
 
     if value in NUMBER_WORDS:
@@ -106,6 +109,7 @@ def parse_number(value: str) -> Optional[float]:
 
 def normalize_unit(unit: str) -> str:
     """Normalize supported quantity units."""
+
     unit = unit.lower().strip()
 
     if unit in GRAM_UNITS:
@@ -120,28 +124,37 @@ def normalize_unit(unit: str) -> str:
     return unit
 
 
+# ============================================================
+# QUANTITY EXTRACTION
+# ============================================================
+
 def extract_quantity(text: str):
     """
     Return (quantity, unit, remaining_text).
 
     Supports:
       200g banana
-      200 grams mango
+      200 grams of mango
       2 kg rice
       2 apples
       two bananas
+      2 bananas in a nutrition question
+      I ate 150 grams of apple
     """
+
     text = text.strip()
 
     unit_pattern = "|".join(
-        sorted(
-            (re.escape(unit) for unit in ALL_UNITS),
-            key=len,
-            reverse=True,
-        )
+        re.escape(unit)
+        for unit in sorted(ALL_UNITS, key=len, reverse=True)
     )
 
-    # Numeric quantity + measurement unit
+    number_word_pattern = "|".join(
+        re.escape(word)
+        for word in sorted(NUMBER_WORDS, key=len, reverse=True)
+    )
+
+    # 200g banana, 150 grams of apple, 2 kg rice.
     match = re.search(
         rf"\b(\d+(?:\.\d+)?)\s*({unit_pattern})\b",
         text,
@@ -156,15 +169,8 @@ def extract_quantity(text: str):
 
         return quantity, unit, re.sub(r"\s+", " ", remaining)
 
-    number_word_pattern = "|".join(
-        sorted(
-            (re.escape(word) for word in NUMBER_WORDS),
-            key=len,
-            reverse=True,
-        )
-    )
-
-    # Number word + measurement unit
+    # One hundred grams is intentionally not interpreted here;
+    # this supports number words followed by a known unit.
     match = re.search(
         rf"\b({number_word_pattern})\s+({unit_pattern})\b",
         text,
@@ -179,71 +185,96 @@ def extract_quantity(text: str):
 
         return quantity, unit, re.sub(r"\s+", " ", remaining)
 
-    # Numeric count + food, e.g. 2 apples
-    match = re.match(r"^\s*(\d+(?:\.\d+)?)\s+(.+?)\s*$", text)
-
-    if match and match.group(2).strip():
-        return float(match.group(1)), "piece", match.group(2).strip()
-
-    # Number word + food, e.g. two apples
-    match = re.match(
-        rf"^\s*({number_word_pattern})\s+(.+?)\s*$",
+    # Counted food quantities, e.g. "2 bananas" or "two boiled eggs".
+    match = re.search(
+        rf"\b(\d+(?:\.\d+)?|{number_word_pattern})\s+"
+        r"(?=[a-z])",
         text,
     )
 
     if match:
-        quantity = parse_number(match.group(1))
-        remaining = match.group(2).strip()
+        prefix = text[:match.start()].strip()
 
-        if quantity is not None and remaining:
-            return quantity, "piece", remaining
+        # The quantity can appear after a natural-language question
+        # prefix, not only at the start of the input.
+        allowed_prefixes = {
+            "",
+            "i ate",
+            "i had",
+            "i have",
+            "i just ate",
+            "i consumed",
+            "i have eaten",
+            "tell me the nutrition facts for",
+            "tell me nutrition facts for",
+            "nutrition facts for",
+            "nutrition information for",
+            "what are the nutrition facts for",
+            "what are the nutrition facts of",
+            "what is the nutrition information for",
+            "give me the nutrition information for",
+            "give me the nutrition facts for",
+            "tell me the nutrition information for",
+        }
+
+        if prefix in allowed_prefixes:
+            quantity = parse_number(match.group(1))
+
+            if quantity is not None:
+                remaining = (
+                    text[:match.start()] + " " + text[match.end():]
+                ).strip()
+
+                return (
+                    quantity,
+                    "piece",
+                    re.sub(r"\s+", " ", remaining),
+                )
 
     return None, None, text
 
 
-def singularize_food(food: str) -> str:
-    """Convert simple plural food names to singular."""
-    words = food.split()
-
-    if not words:
-        return food
-
-    last = words[-1]
-
-    if len(last) > 4 and last.endswith("ies"):
-        last = last[:-3] + "y"
-    elif len(last) > 4 and last.endswith("oes"):
-        last = last[:-2]
-    elif len(last) > 3 and last.endswith("s") and not last.endswith("ss"):
-        last = last[:-1]
-
-    words[-1] = last
-    return " ".join(words)
-
+# ============================================================
+# FOOD PHRASE CLEANING
+# ============================================================
 
 def clean_food_phrase(text: str) -> str:
-    """Remove question wording and serving descriptors, not food names."""
-    text = text.strip()
+    """Remove question wording and retain the food description."""
 
-    # Longer/more specific phrases are handled before shorter phrases.
+    text = text.strip().lower()
+
     removable_phrases = [
-        r"\bhow much\b",
-        r"\bhow many\b",
         r"\bcan you tell me\b",
         r"\bcould you tell me\b",
         r"\bplease tell me\b",
+        r"\bi want to know\b",
+        r"\bi would like to know\b",
         r"\btell me\b",
         r"\bshow me\b",
-        r"\bi have eaten\b",
-        r"\bi consumed\b",
-        r"\bi ate\b",
-        r"\bi eat\b",
-        r"\bi had\b",
-        r"\bi have\b",
+        r"\bgive me\b",
+        r"\bwhat are the nutrition facts of\b",
+        r"\bwhat are the nutrition facts for\b",
+        r"\bwhat are the nutrients in\b",
+        r"\bwhat nutrients does\b",
+        r"\bwhat nutrients do\b",
+        r"\bwhat nutrients are\b",
+        r"\bwhat nutrients\b",
+        r"\bwhat are the calories in\b",
+        r"\bwhat is the nutrition in\b",
+        r"\bwhat is the nutritional value of\b",
+        r"\bwhat is the nutritional content of\b",
+        r"\bwhat is the nutrition information for\b",
+        r"\bwhat is the nutrition information of\b",
         r"\bwhat is\b",
         r"\bwhat are\b",
         r"\bwhat's\b",
+        r"\bhow much\b",
+        r"\bhow many\b",
+        r"\bhow nutritious is\b",
         r"\bnutritional value of\b",
+        r"\bnutritional content of\b",
+        r"\bnutritional information for\b",
+        r"\bnutritional information of\b",
         r"\bnutrition information for\b",
         r"\bnutrition information of\b",
         r"\bnutrition facts for\b",
@@ -251,13 +282,12 @@ def clean_food_phrase(text: str) -> str:
         r"\bnutrition in\b",
         r"\bnutrition for\b",
         r"\bnutrition of\b",
-        r"\bnutritional information for\b",
-        r"\bnutritional information of\b",
+        r"\bprotein content of\b",
         r"\bprotein is in\b",
         r"\bprotein in\b",
+        r"\bcalorie content of\b",
         r"\bcalories are in\b",
         r"\bcalories in\b",
-        r"\bcalorie content of\b",
         r"\bcarbohydrates are in\b",
         r"\bcarbohydrates in\b",
         r"\bcarbs in\b",
@@ -265,14 +295,37 @@ def clean_food_phrase(text: str) -> str:
         r"\bfat in\b",
         r"\bfiber in\b",
         r"\bfibre in\b",
-        r"\bhealthy\b",
-        r"\btell me about\b",
+        r"\bcalculate the nutrients for\b",
+        r"\bcalculate the nutrients\b",
+        r"\bcalculate\b",
+        r"\bi have eaten\b",
+        r"\bi just ate\b",
+        r"\bi ate\b",
+        r"\bi eat\b",
+        r"\bi had\b",
+        r"\bi have\b",
+        r"\bi consumed\b",
+        r"\bi get from eating\b",
+        r"\bfrom eating\b",
+        r"\bdid i consume\b",
+        r"\bdid i eat\b",
+        r"\bwhat did i get\b",
+        r"\bhow many calories did i consume\b",
+        r"\bhow many calories did i eat\b",
+        r"\bhow much protein does it contain\b",
+        r"\bwhat nutrients did i get\b",
+        r"\bdoes it contain\b",
+        r"\bfor breakfast\b",
+        r"\bfor lunch\b",
+        r"\bfor dinner\b",
+        r"\bthis morning\b",
+        r"\blast night\b",
     ]
 
     for pattern in removable_phrases:
-        text = re.sub(pattern, " ", text, flags=re.IGNORECASE)
+        text = re.sub(pattern, " ", text)
 
-    serving_descriptors = {
+    serving_words = {
         "small", "medium", "large",
         "cup", "cups", "bowl", "bowls",
         "plate", "plates", "glass", "glasses",
@@ -280,44 +333,110 @@ def clean_food_phrase(text: str) -> str:
     }
 
     filler_words = {
-        "a", "an", "please", "give", "me",
-        "information", "details", "about", "for",
-        "of", "the", "is", "are", "in",
-        "per", "does", "contain", "contains",
+        "a", "an", "the", "please", "me",
+        "information", "details", "about", "of",
+        "is", "are", "in", "per", "does", "do",
+        "contain", "contains", "did", "i", "it",
+        "there", "for", "what", "how", "much", "many",
+        "calorie", "calories", "protein", "nutrient",
+        "nutrients", "nutrition", "nutritional",
+        "value", "facts", "content", "tell", "give",
+        "show", "can", "you", "could", "would",
+        "like", "to", "know", "want", "get",
+        "ate", "eat", "eaten", "had", "have",
+        "consumed", "calculate", "my", "just",
+        "healthy", "carbs", "carbohydrates",
+        "fat", "fiber", "fibre", "vitamin",
+        "vitamins", "mineral", "minerals",
+        "instead", "then", "breakfast", "lunch",
+        "dinner", "morning", "night",
     }
 
-    cleaned_words = [
+    words = [
         word
         for word in text.split()
-        if word.lower() not in filler_words
-        and word.lower() not in serving_descriptors
+        if word not in filler_words and word not in serving_words
     ]
 
-    return " ".join(cleaned_words).strip()
+    return re.sub(r"\s+", " ", " ".join(words)).strip(" .")
 
+
+# ============================================================
+# FOOD NAME NORMALIZATION
+# ============================================================
+
+def singularize_food(food: str) -> str:
+    """Normalize simple plurals while preserving meaningful food names."""
+
+    food = food.strip()
+
+    if not food:
+        return food
+
+    preserve_plural = {
+        "chicken wings",
+        "chicken thighs",
+        "chicken breasts",
+        "french fries",
+        "green beans",
+        "kidney beans",
+        "baked beans",
+        "chocolate chips",
+        "oats",
+        "lentils",
+    }
+
+    if food in preserve_plural:
+        return food
+
+    words = food.split()
+    last = words[-1]
+
+    irregular = {
+        "potatoes": "potato",
+        "tomatoes": "tomato",
+        "leaves": "leaf",
+    }
+
+    if last in irregular:
+        last = irregular[last]
+    elif len(last) > 4 and last.endswith("ies"):
+        last = last[:-3] + "y"
+    elif (
+        len(last) > 3
+        and last.endswith("s")
+        and not last.endswith(("ss", "us", "is"))
+    ):
+        last = last[:-1]
+
+    words[-1] = last
+    return " ".join(words)
+
+
+# ============================================================
+# INTENT DETECTION AND MAIN PARSER
+# ============================================================
 
 def detect_intent(text: str) -> str:
-    """Detect nutrition intent; food-only queries default to nutrition."""
-    words = set(text.lower().split())
+    """Identify a nutrition request."""
 
-    if words.intersection(NUTRITION_KEYWORDS):
-        return "nutrition"
-
-    return "nutrition"
+    return "nutrition" if text.strip() else "unknown"
 
 
 def extract_food(text: str) -> Optional[str]:
-    """Extract a food phrase after removing question wording."""
+    """Extract the cleaned food name."""
+
     cleaned = clean_food_phrase(text)
     cleaned = re.sub(r"^\d+(?:\.\d+)?\s*", "", cleaned).strip()
 
-    return cleaned if cleaned else None
+    return cleaned or None
 
 
 def parse_query(user_text: str) -> ParsedQuery:
-    """Convert natural-language input into structured query data."""
-    original_text = user_text
-    normalized = normalize_text(user_text)
+    """Parse a natural-language nutrition query."""
+
+    original_text = user_text if isinstance(user_text, str) else ""
+    normalized = normalize_text(original_text)
 
     if not normalized:
         return ParsedQuery(
@@ -332,7 +451,7 @@ def parse_query(user_text: str) -> ParsedQuery:
     quantity, unit, remaining_text = extract_quantity(corrected)
     food = extract_food(remaining_text)
 
-    if food and unit == "piece":
+    if food:
         food = singularize_food(food)
 
     return ParsedQuery(
@@ -344,11 +463,16 @@ def parse_query(user_text: str) -> ParsedQuery:
     )
 
 
+# ============================================================
+# UNIT CONVERSION
+# ============================================================
+
 def quantity_to_grams(
     quantity: Optional[float],
     unit: Optional[str],
 ) -> Optional[float]:
-    """Convert mass units to grams; piece counts need portion data."""
+    """Convert mass quantities to grams."""
+
     if quantity is None or unit is None:
         return None
 
@@ -360,11 +484,18 @@ def quantity_to_grams(
         return quantity * 1000
     if unit == "mg":
         return quantity / 1000
+
+    # A count such as 2 bananas cannot be converted accurately
+    # without an estimated or measured weight per item.
     if unit == "piece":
         return None
 
     return None
 
+
+# ============================================================
+# MANUAL TESTS
+# ============================================================
 
 if __name__ == "__main__":
     test_queries = [
@@ -387,6 +518,13 @@ if __name__ == "__main__":
         "I ate a small cup of cake",
         "How much protein is in 100g of banana?",
         "Nutrition in dragon fruit",
+        "What nutrients does an egg contain?",
+        "Give me the nutrition information for potatoes.",
+        "I ate 200g of rice. How many calories did I consume?",
+        "Tell me the nutrition facts for 2 bananas.",
+        "I ate 150 grams of apple. Calculate the nutrients.",
+        "How much fat is there in 250g of boiled potato?",
+        "I had two boiled eggs for breakfast. What nutrients did I get?",
     ]
 
     print("=" * 70)
@@ -397,11 +535,11 @@ if __name__ == "__main__":
         result = parse_query(query)
         grams = quantity_to_grams(result.quantity, result.unit)
 
-        print(f"\nInput     : {query}")
-        print(f"Food      : {result.food}")
-        print(f"Quantity  : {result.quantity}")
-        print(f"Unit      : {result.unit}")
-        print(f"Intent    : {result.intent}")
-        print(f"Grams     : {grams}")
+        print(f"\nInput    : {query}")
+        print(f"Food     : {result.food}")
+        print(f"Quantity : {result.quantity}")
+        print(f"Unit     : {result.unit}")
+        print(f"Intent   : {result.intent}")
+        print(f"Grams    : {grams}")
 
     print("\nNLP TEST COMPLETED")
