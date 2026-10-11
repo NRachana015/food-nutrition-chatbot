@@ -1,5 +1,7 @@
+
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 
 from chatbot import chat
 
@@ -9,7 +11,7 @@ from chatbot import chat
 # ============================================================
 
 st.set_page_config(
-    page_title="Food Nutrition Chatbot",
+    page_title="NutriBot | Food Nutrition Chatbot",
     page_icon="🥗",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -23,20 +25,11 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-
-    /* ======================================================
-       GLOBAL
-       ====================================================== */
-
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1400px;
     }
-
-    /* ======================================================
-       HEADER
-       ====================================================== */
 
     .main-title {
         font-size: 2.6rem;
@@ -50,10 +43,6 @@ st.markdown(
         font-size: 1.05rem;
         margin-bottom: 1.5rem;
     }
-
-    /* ======================================================
-       SIDEBAR BRAND
-       ====================================================== */
 
     .sidebar-brand {
         padding: 0.5rem 0 1rem 0;
@@ -70,10 +59,6 @@ st.markdown(
         font-size: 0.85rem;
     }
 
-    /* ======================================================
-       SIDEBAR SECTION
-       ====================================================== */
-
     .sidebar-section-title {
         font-size: 0.78rem;
         font-weight: 800;
@@ -86,12 +71,8 @@ st.markdown(
     .sidebar-description {
         font-size: 0.9rem;
         line-height: 1.55;
-        color: #4b5563;
+        color: #6b7280;
     }
-
-    /* ======================================================
-       STATUS CARD
-       ====================================================== */
 
     .status-card {
         border: 1px solid rgba(128, 128, 128, 0.25);
@@ -111,10 +92,6 @@ st.markdown(
         margin-top: 0.2rem;
     }
 
-    /* ======================================================
-       RESULT HEADER
-       ====================================================== */
-
     .result-title {
         font-size: 1.35rem;
         font-weight: 800;
@@ -131,10 +108,6 @@ st.markdown(
         font-size: 0.9rem;
         margin-bottom: 1rem;
     }
-
-    /* ======================================================
-       NUTRITION CARDS
-       ====================================================== */
 
     .nutrition-card {
         border: 1px solid rgba(128, 128, 128, 0.22);
@@ -155,27 +128,12 @@ st.markdown(
         margin-top: 0.3rem;
     }
 
-    /* ======================================================
-       USDA CARD
-       ====================================================== */
-
-    .usda-note {
-        color: #6b7280;
-        font-size: 0.82rem;
-        margin-top: 0.4rem;
-    }
-
-    /* ======================================================
-       FOOTER
-       ====================================================== */
-
     .app-footer {
         text-align: center;
         color: #9ca3af;
         font-size: 0.78rem;
         padding-top: 2rem;
     }
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -199,16 +157,10 @@ if "pending_prompt" not in st.session_state:
 
 with st.sidebar:
 
-    # --------------------------------------------------------
-    # BRAND
-    # --------------------------------------------------------
-
     st.markdown(
         """
         <div class="sidebar-brand">
-            <div class="sidebar-brand-title">
-                🥗 NutriBot
-            </div>
+            <div class="sidebar-brand-title">🥗 NutriBot</div>
             <div class="sidebar-brand-subtitle">
                 AI Nutrition Assistant
             </div>
@@ -218,10 +170,6 @@ with st.sidebar:
     )
 
     st.divider()
-
-    # --------------------------------------------------------
-    # ABOUT
-    # --------------------------------------------------------
 
     st.markdown(
         '<div class="sidebar-section-title">ℹ️ ABOUT</div>',
@@ -238,50 +186,27 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # --------------------------------------------------------
-    # QUICK EXAMPLES
-    # --------------------------------------------------------
-
     st.markdown(
         '<div class="sidebar-section-title">⚡ QUICK EXAMPLES</div>',
         unsafe_allow_html=True,
     )
 
     example_queries = [
-        (
-            "🔥",
-            "Banana — Calories",
-            "how many calories are in a banana",
-        ),
-        (
-            "💪",
-            "Chicken — Protein",
-            "how much protein is in 200g chicken",
-        ),
-        (
-            "🥦",
-            "Broccoli — Vitamins & Minerals",
-            "what vitamins and minerals are in 150g broccoli",
-        ),
-        (
-            "🌾",
-            "Oats — Fiber",
-            "how much fiber is in 100g oats",
-        ),
-        (
-            "🥑",
-            "Avocado — Healthy Fats",
-            "how much fat is in 100g avocado",
-        ),
-        (
-            "🥛",
-            "Milk — Calcium",
-            "how much calcium is in 250ml milk",
-        ),
+        ("🔥", "Banana — Calories",
+         "how many calories are in a banana"),
+        ("💪", "Chicken — Protein",
+         "how much protein is in 200g chicken"),
+        ("🥦", "Broccoli — Vitamins & Minerals",
+         "what vitamins and minerals are in 150g broccoli"),
+        ("🌾", "Oats — Fiber",
+         "how much fiber is in 100g oats"),
+        ("🥑", "Avocado — Healthy Fats",
+         "how much fat is in 100g avocado"),
+        ("🥛", "Milk — Calcium",
+         "how much calcium is in 250ml milk"),
     ]
 
     for emoji, label, query in example_queries:
-
         if st.button(
             f"{emoji}  {label}",
             key=f"example_{label}",
@@ -289,10 +214,6 @@ with st.sidebar:
         ):
             st.session_state.pending_prompt = query
             st.rerun()
-
-    # --------------------------------------------------------
-    # WHAT I CAN DO
-    # --------------------------------------------------------
 
     st.markdown(
         '<div class="sidebar-section-title">🔍 WHAT I CAN DO</div>',
@@ -312,10 +233,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # --------------------------------------------------------
-    # NUTRIENTS TRACKED
-    # --------------------------------------------------------
-
     st.markdown(
         '<div class="sidebar-section-title">📊 NUTRIENTS TRACKED</div>',
         unsafe_allow_html=True,
@@ -330,6 +247,8 @@ with st.sidebar:
             🥑 Fat<br>
             🌾 Fiber<br>
             🍬 Sugar<br>
+            🦴 Calcium<br>
+            🩸 Iron<br>
             🧂 Sodium<br>
             🍊 Vitamin C
         </div>
@@ -339,30 +258,19 @@ with st.sidebar:
 
     st.divider()
 
-    # --------------------------------------------------------
-    # CLEAR CHAT
-    # --------------------------------------------------------
-
-    if st.button(
-        "🗑️ Clear Conversation",
-        use_container_width=True,
-    ):
+    if st.button("🗑️ Clear Conversation", use_container_width=True):
         st.session_state.messages = []
         st.session_state.pending_prompt = None
         st.rerun()
-
-    # --------------------------------------------------------
-    # USDA STATUS
-    # --------------------------------------------------------
 
     st.markdown(
         """
         <div class="status-card">
             <div class="status-title">
-                🟢 USDA Connected
+                🌐 USDA FoodData Central
             </div>
             <div class="status-text">
-                Dynamic nutrition data from USDA FoodData Central
+                Nutrition data is retrieved dynamically when available.
             </div>
         </div>
         """,
@@ -393,23 +301,20 @@ st.markdown(
 
 with st.expander("🔎 How it works", expanded=False):
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    columns = st.columns(5)
 
     steps = [
-        ("1", "💬", "Ask", "Enter a food-related question."),
-        ("2", "🧠", "NLP", "Food and quantity are detected."),
-        ("3", "🔎", "Search", "USDA is searched dynamically."),
-        ("4", "✅", "Match", "The best reliable match is selected."),
-        ("5", "📊", "Calculate", "Nutrition is calculated."),
+        ("💬", "1. Ask", "Enter a food-related question."),
+        ("🧠", "2. NLP", "Food and quantity are detected."),
+        ("🔎", "3. Search", "USDA is searched dynamically."),
+        ("✅", "4. Match", "A suitable food record is selected."),
+        ("📊", "5. Calculate", "Nutrition is calculated."),
     ]
 
-    for column, (number, icon, title, description) in zip(
-        [col1, col2, col3, col4, col5],
-        steps,
-    ):
+    for column, (emoji, title, description) in zip(columns, steps):
         with column:
-            st.markdown(f"### {icon}")
-            st.markdown(f"**{number}. {title}**")
+            st.markdown(f"### {emoji}")
+            st.markdown(f"**{title}**")
             st.caption(description)
 
 
@@ -418,33 +323,21 @@ with st.expander("🔎 How it works", expanded=False):
 # ============================================================
 
 def display_nutrition_result(result: dict):
-    """
-    Display a professional nutrition result.
-    """
-
-    nutrition = result.get(
-        "nutrition",
-        {},
-    )
-
-    # --------------------------------------------------------
-    # FOOD + AMOUNT
-    # --------------------------------------------------------
+    nutrition = result.get("nutrition") or {}
 
     matched_food = result.get(
         "matched_food",
-        result.get(
-            "food",
-            "Unknown",
-        ),
+        result.get("food", "Unknown"),
     )
 
     grams = result.get("grams")
     quantity = result.get("quantity")
     unit = result.get("unit")
 
-    if grams is not None and quantity is not None and unit:
+    if quantity is not None and unit:
         amount_text = f"{quantity:g} {unit}"
+        if grams is not None:
+            amount_text += f" (approximately {grams:g} g)"
     elif grams is not None:
         amount_text = f"{grams:g} g"
     else:
@@ -454,233 +347,156 @@ def display_nutrition_result(result: dict):
         '<div class="result-title">🍎 Nutrition Information</div>',
         unsafe_allow_html=True,
     )
-
     st.markdown(
         f'<div class="result-food">{matched_food}</div>',
         unsafe_allow_html=True,
     )
-
     st.markdown(
         f'<div class="result-amount">{amount_text}</div>',
         unsafe_allow_html=True,
     )
 
-    # --------------------------------------------------------
-    # MAIN NUTRIENTS
-    # --------------------------------------------------------
+    # Main nutrients
+    calories = float(nutrition.get("calories") or 0)
+    protein = float(nutrition.get("protein_g") or 0)
+    carbohydrates = float(nutrition.get("carbohydrates_g") or 0)
+    fat = float(nutrition.get("fat_g") or 0)
 
-    calories = nutrition.get(
-        "calories",
-        0,
-    )
+    st.markdown("#### 📊 Nutrition Summary")
 
-    protein = nutrition.get(
-        "protein_g",
-        0,
-    )
+    columns = st.columns(4)
 
-    carbohydrates = nutrition.get(
-        "carbohydrates_g",
-        0,
-    )
-
-    fat = nutrition.get(
-        "fat_g",
-        0,
-    )
-
-    st.markdown(
-        "#### 📊 Nutrition Summary"
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    nutrient_cards = [
-        (
-            col1,
-            "🔥 Calories",
-            f"{calories:.2f} kcal",
-        ),
-        (
-            col2,
-            "💪 Protein",
-            f"{protein:.2f} g",
-        ),
-        (
-            col3,
-            "🍞 Carbohydrates",
-            f"{carbohydrates:.2f} g",
-        ),
-        (
-            col4,
-            "🥑 Fat",
-            f"{fat:.2f} g",
-        ),
+    cards = [
+        (columns[0], "🔥 Calories", f"{calories:.2f} kcal"),
+        (columns[1], "💪 Protein", f"{protein:.2f} g"),
+        (columns[2], "🍞 Carbohydrates", f"{carbohydrates:.2f} g"),
+        (columns[3], "🥑 Fat", f"{fat:.2f} g"),
     ]
 
-    for column, label, value in nutrient_cards:
-
+    for column, label, value in cards:
         with column:
-
             st.markdown(
                 f"""
                 <div class="nutrition-card">
-                    <div class="nutrition-label">
-                        {label}
-                    </div>
-                    <div class="nutrition-value">
-                        {value}
-                    </div>
+                    <div class="nutrition-label">{label}</div>
+                    <div class="nutrition-value">{value}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    # --------------------------------------------------------
-    # ADDITIONAL NUTRIENTS
-    # --------------------------------------------------------
+    # Additional nutrients
+    additional_nutrients = [
+        ("🌾 Fiber", "fiber_g", "g"),
+        ("🍬 Sugar", "sugar_g", "g"),
+        ("🦴 Calcium", "calcium_mg", "mg"),
+        ("🩸 Iron", "iron_mg", "mg"),
+        ("🧂 Sodium", "sodium_mg", "mg"),
+        ("🍊 Vitamin C", "vitamin_c_mg", "mg"),
+    ]
 
-    additional_items = []
+    available = [
+        (label, float(nutrition[key]), unit_name)
+        for label, key, unit_name in additional_nutrients
+        if nutrition.get(key) is not None
+    ]
 
-    if "fiber_g" in nutrition:
-        additional_items.append(
-            (
-                "🌾 Fiber",
-                f"{nutrition['fiber_g']:.2f} g",
-            )
-        )
+    if available:
+        st.markdown("#### 🧪 Additional Nutrients")
+        columns = st.columns(min(3, len(available)))
 
-    if "sugar_g" in nutrition:
-        additional_items.append(
-            (
-                "🍬 Sugar",
-                f"{nutrition['sugar_g']:.2f} g",
-            )
-        )
+        for index, (label, value, unit_name) in enumerate(available):
+            with columns[index % len(columns)]:
+                st.metric(label, f"{value:.2f} {unit_name}")
 
-    if "sodium_mg" in nutrition:
-        additional_items.append(
-            (
-                "🧂 Sodium",
-                f"{nutrition['sodium_mg']:.2f} mg",
-            )
-        )
-
-    if "vitamin_c_mg" in nutrition:
-        additional_items.append(
-            (
-                "🍊 Vitamin C",
-                f"{nutrition['vitamin_c_mg']:.2f} mg",
-            )
-        )
-
-    if additional_items:
-
-        st.markdown(
-            "#### 🧪 Additional Nutrients"
-        )
-
-        columns = st.columns(
-            len(additional_items)
-        )
-
-        for column, (label, value) in zip(
-            columns,
-            additional_items,
-        ):
-
-            with column:
-
-                st.metric(
-                    label,
-                    value,
-                )
-
-    # --------------------------------------------------------
-    # MACRONUTRIENT CHART
-    # --------------------------------------------------------
-
-    st.markdown(
-        "#### 📈 Macronutrient Profile"
-    )
+    # Improved macronutrient chart
+    st.markdown("#### 📈 Macronutrient Profile")
 
     chart_data = pd.DataFrame(
         {
             "Nutrient": [
                 "Carbohydrates",
+                "Protein",
                 "Fat",
                 "Fiber",
-                "Protein",
             ],
             "Grams": [
                 carbohydrates,
-                fat,
-                nutrition.get(
-                    "fiber_g",
-                    0,
-                ),
                 protein,
+                fat,
+                float(nutrition.get("fiber_g") or 0),
             ],
         }
     )
 
-    st.bar_chart(
-        chart_data,
-        x="Nutrient",
-        y="Grams",
-        horizontal=True,
-        height=300,
+    chart_data = chart_data[chart_data["Grams"] > 0].sort_values(
+        "Grams",
+        ascending=True,
     )
 
-    # --------------------------------------------------------
-    # USDA INFORMATION
-    # --------------------------------------------------------
+    if not chart_data.empty:
+        fig = px.bar(
+            chart_data,
+            x="Grams",
+            y="Nutrient",
+            orientation="h",
+            text="Grams",
+            labels={
+                "Grams": "Amount (grams)",
+                "Nutrient": "",
+            },
+            title="Macronutrients by weight",
+        )
 
-    st.markdown(
-        "#### 🔎 USDA Information"
-    )
+        fig.update_traces(
+            texttemplate="%{text:.2f} g",
+            textposition="outside",
+            cliponaxis=False,
+        )
 
-    data_type = result.get(
-        "data_type",
-        "Unknown",
-    )
+        fig.update_layout(
+            height=320,
+            showlegend=False,
+            margin=dict(l=20, r=80, t=60, b=45),
+            xaxis=dict(
+                rangemode="tozero",
+                title="Amount (grams)",
+            ),
+            yaxis=dict(
+                title="",
+                automargin=True,
+            ),
+        )
 
-    fdc_id = result.get(
-        "fdc_id",
-        "Unknown",
-    )
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+        )
+    else:
+        st.info("No macronutrient values are available to plot.")
 
-    match_score = result.get(
-        "match_score"
-    )
+    # USDA information
+    st.markdown("#### 🔎 USDA Information")
 
-    with st.container(
-        border=True
-    ):
+    with st.container(border=True):
+        columns = st.columns(3)
 
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
+        with columns[0]:
             st.markdown("**Data type**")
-            st.write(data_type)
+            st.write(result.get("data_type") or "Unknown")
 
-        with col2:
+        with columns[1]:
             st.markdown("**FDC ID**")
-            st.write(fdc_id)
+            st.write(result.get("fdc_id") or "Unknown")
 
-        with col3:
+        with columns[2]:
             st.markdown("**Match score**")
-
-            if match_score is not None:
-                st.write(
-                    f"{match_score:.2f}"
-                )
-            else:
-                st.write("N/A")
+            score = result.get("match_score")
+            st.write(f"{score:.2f}" if score is not None else "N/A")
 
         st.caption(
-            "✓ Nutrition data retrieved dynamically from "
-            "USDA FoodData Central."
+            "Nutrition data retrieved from USDA FoodData Central "
+            "when a reliable match is available."
         )
 
 
@@ -689,44 +505,23 @@ def display_nutrition_result(result: dict):
 # ============================================================
 
 for message in st.session_state.messages:
-
-    with st.chat_message(
-        message["role"]
-    ):
-
-        # ----------------------------------------------------
-        # PREVIOUS SUCCESSFUL NUTRITION RESULT
-        # ----------------------------------------------------
-
+    with st.chat_message(message["role"]):
         if message.get("result") is not None:
-
-            display_nutrition_result(
-                message["result"]
-            )
-
-        # ----------------------------------------------------
-        # NORMAL TEXT MESSAGE
-        # ----------------------------------------------------
-
+            display_nutrition_result(message["result"])
         else:
-
-            st.markdown(
-                message["content"]
-            )
+            st.markdown(message["content"])
 
 
 # ============================================================
-# PROCESS PENDING SIDEBAR EXAMPLE
+# USER INPUT
 # ============================================================
 
 prompt = st.chat_input(
-    "Ask about any food...  e.g.  200g banana"
+    "Ask about any food... e.g. 200g banana"
 )
 
 if st.session_state.pending_prompt:
-
     prompt = st.session_state.pending_prompt
-
     st.session_state.pending_prompt = None
 
 
@@ -735,11 +530,6 @@ if st.session_state.pending_prompt:
 # ============================================================
 
 if prompt:
-
-    # --------------------------------------------------------
-    # SAVE USER MESSAGE
-    # --------------------------------------------------------
-
     st.session_state.messages.append(
         {
             "role": "user",
@@ -747,96 +537,44 @@ if prompt:
         }
     )
 
-    # --------------------------------------------------------
-    # DISPLAY USER MESSAGE
-    # --------------------------------------------------------
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    with st.chat_message(
-        "user"
-    ):
-
-        st.markdown(
-            prompt
-        )
-
-    # --------------------------------------------------------
-    # ASSISTANT
-    # --------------------------------------------------------
-
-    with st.chat_message(
-        "assistant"
-    ):
-
-        with st.spinner(
-            "🔎 Searching USDA nutrition data..."
-        ):
-
+    with st.chat_message("assistant"):
+        with st.spinner("🔎 Searching nutrition data..."):
             try:
-
-                result = chat(
-                    prompt
+                result = chat(prompt)
+            except Exception:
+                st.error(
+                    "Something went wrong while processing your request. "
+                    "Please check your connection and try again."
                 )
-
-            except Exception as exc:
-
                 result = {
                     "success": False,
                     "message": (
-                        "Sorry, something went wrong "
-                        "while processing your request: "
-                        f"{exc}"
+                        "The request could not be processed. "
+                        "Please try again."
                     ),
                 }
 
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
-
-        if result.get(
-            "success",
-            False,
-        ):
-
-            display_nutrition_result(
-                result
-            )
-
+        if result.get("success", False):
+            display_nutrition_result(result)
             assistant_message = result.get(
                 "message",
                 "Nutrition information found.",
             )
-
-        # ----------------------------------------------------
-        # NO MATCH / ERROR
-        # ----------------------------------------------------
-
         else:
-
             assistant_message = result.get(
                 "message",
-                "Sorry, I could not find reliable nutrition information.",
+                "I couldn't find reliable nutrition information.",
             )
-
-            st.warning(
-                assistant_message
-            )
-
-    # --------------------------------------------------------
-    # SAVE ASSISTANT RESPONSE
-    # --------------------------------------------------------
+            st.warning(assistant_message)
 
     st.session_state.messages.append(
         {
             "role": "assistant",
             "content": assistant_message,
-            "result": (
-                result
-                if result.get(
-                    "success",
-                    False,
-                )
-                else None
-            ),
+            "result": result if result.get("success", False) else None,
         }
     )
 
@@ -848,7 +586,7 @@ if prompt:
 st.markdown(
     """
     <div class="app-footer">
-        Food Nutrition Chatbot • NLP + USDA FoodData Central
+        NutriBot • Natural Language Processing + USDA FoodData Central
     </div>
     """,
     unsafe_allow_html=True,

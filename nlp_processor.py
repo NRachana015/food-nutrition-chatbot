@@ -50,7 +50,12 @@ KILOGRAM_UNITS = {"kg", "kilogram", "kilograms", "kilo", "kilos"}
 MILLIGRAM_UNITS = {"mg", "milligram", "milligrams"}
 PIECE_UNITS = {"piece", "pieces", "pc", "pcs", "item", "items"}
 
-ALL_UNITS = GRAM_UNITS | KILOGRAM_UNITS | MILLIGRAM_UNITS | PIECE_UNITS
+ALL_UNITS = (
+    GRAM_UNITS
+    | KILOGRAM_UNITS
+    | MILLIGRAM_UNITS
+    | PIECE_UNITS
+)
 
 
 @dataclass
@@ -76,8 +81,11 @@ def normalize_text(text: str) -> str:
 
     text = text.lower().strip()
     text = text.replace("’", "'")
+
+    # Preserve decimal numbers and remove other punctuation.
     text = re.sub(r"[^a-z0-9.\s]", " ", text)
     text = re.sub(r"(?<!\d)\.(?!\d)", " ", text)
+
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -103,7 +111,7 @@ def parse_number(value: str) -> Optional[float]:
 
     try:
         return float(value)
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -114,10 +122,13 @@ def normalize_unit(unit: str) -> str:
 
     if unit in GRAM_UNITS:
         return "g"
+
     if unit in KILOGRAM_UNITS:
         return "kg"
+
     if unit in MILLIGRAM_UNITS:
         return "mg"
+
     if unit in PIECE_UNITS:
         return "piece"
 
@@ -132,14 +143,17 @@ def extract_quantity(text: str):
     """
     Return (quantity, unit, remaining_text).
 
-    Supports:
+    Supported examples:
       200g banana
       200 grams of mango
       2 kg rice
-      2 apples
+      2 bananas
       two bananas
-      2 bananas in a nutrition question
-      I ate 150 grams of apple
+      What is the nutrition in 2 eggs?
+      What is the nutrition in two boiled eggs?
+      I ate 150 grams of apple.
+      I had two boiled eggs for breakfast.
+      Tell me the nutrition facts for 2 bananas.
     """
 
     text = text.strip()
@@ -154,7 +168,10 @@ def extract_quantity(text: str):
         for word in sorted(NUMBER_WORDS, key=len, reverse=True)
     )
 
-    # 200g banana, 150 grams of apple, 2 kg rice.
+    # --------------------------------------------------------
+    # 1. Numeric mass quantities: 200g banana, 2 kg rice
+    # --------------------------------------------------------
+
     match = re.search(
         rf"\b(\d+(?:\.\d+)?)\s*({unit_pattern})\b",
         text,
@@ -163,14 +180,22 @@ def extract_quantity(text: str):
     if match:
         quantity = float(match.group(1))
         unit = normalize_unit(match.group(2))
+
         remaining = (
             text[:match.start()] + " " + text[match.end():]
-        ).strip()
+        )
 
-        return quantity, unit, re.sub(r"\s+", " ", remaining)
+        return (
+            quantity,
+            unit,
+            re.sub(r"\s+", " ", remaining).strip(),
+        )
 
-    # One hundred grams is intentionally not interpreted here;
-    # this supports number words followed by a known unit.
+    # --------------------------------------------------------
+    # 2. Number words followed by mass units:
+    #    two grams of banana
+    # --------------------------------------------------------
+
     match = re.search(
         rf"\b({number_word_pattern})\s+({unit_pattern})\b",
         text,
@@ -179,24 +204,38 @@ def extract_quantity(text: str):
     if match:
         quantity = parse_number(match.group(1))
         unit = normalize_unit(match.group(2))
+
         remaining = (
             text[:match.start()] + " " + text[match.end():]
-        ).strip()
+        )
 
-        return quantity, unit, re.sub(r"\s+", " ", remaining)
+        return (
+            quantity,
+            unit,
+            re.sub(r"\s+", " ", remaining).strip(),
+        )
 
-    # Counted food quantities, e.g. "2 bananas" or "two boiled eggs".
+    # --------------------------------------------------------
+    # 3. Counted food quantities:
+    #    2 eggs, two bananas, 3 tomatoes
+    # --------------------------------------------------------
+
+    number_pattern = (
+        rf"(?:\d+(?:\.\d+)?|{number_word_pattern})"
+    )
+
     match = re.search(
-        rf"\b(\d+(?:\.\d+)?|{number_word_pattern})\s+"
-        r"(?=[a-z])",
+        rf"\b({number_pattern})\s+(?=[a-z])",
         text,
     )
 
     if match:
         prefix = text[:match.start()].strip()
+        quantity = parse_number(match.group(1))
 
-        # The quantity can appear after a natural-language question
-        # prefix, not only at the start of the input.
+        # Accept common natural-language question prefixes.
+        # This fixes queries such as:
+        # "What is the nutrition in 2 eggs?"
         allowed_prefixes = {
             "",
             "i ate",
@@ -205,31 +244,59 @@ def extract_quantity(text: str):
             "i just ate",
             "i consumed",
             "i have eaten",
-            "tell me the nutrition facts for",
-            "tell me nutrition facts for",
+            "i eat",
+            "i just had",
+            "i just consumed",
+
+            "nutrition in",
+            "nutrition for",
+            "nutrition of",
             "nutrition facts for",
+            "nutrition facts of",
             "nutrition information for",
+            "nutrition information of",
+
+            "what is the nutrition in",
+            "what is nutrition in",
+            "what is the nutrition for",
+            "what is nutrition for",
+            "what is the nutrition of",
+            "what is the nutritional value of",
+            "what is the nutritional content of",
+            "what is the nutritional information for",
+            "what is the nutritional information of",
+            "what is the nutrition information for",
+            "what is the nutrition information of",
+
             "what are the nutrition facts for",
             "what are the nutrition facts of",
-            "what is the nutrition information for",
+            "what are the nutrients in",
+            "what are the calories in",
+
+            "tell me the nutrition facts for",
+            "tell me nutrition facts for",
+            "tell me the nutrition information for",
+            "tell me the nutritional information for",
+            "tell me the nutritional value of",
+
             "give me the nutrition information for",
             "give me the nutrition facts for",
-            "tell me the nutrition information for",
+            "give me the nutritional information for",
+
+            "calculate the nutrients for",
+            "calculate the nutrition for",
         }
 
-        if prefix in allowed_prefixes:
-            quantity = parse_number(match.group(1))
+        if quantity is not None and prefix in allowed_prefixes:
+            remaining = (
+                text[:match.start()] + " " + text[match.end():]
+            )
 
-            if quantity is not None:
-                remaining = (
-                    text[:match.start()] + " " + text[match.end():]
-                ).strip()
-
-                return (
-                    quantity,
-                    "piece",
-                    re.sub(r"\s+", " ", remaining),
-                )
+            return (
+                quantity,
+                "piece",
+                re.sub(r"\s+", " ", remaining).strip(),
+            )
 
     return None, None, text
 
@@ -261,6 +328,10 @@ def clean_food_phrase(text: str) -> str:
         r"\bwhat nutrients\b",
         r"\bwhat are the calories in\b",
         r"\bwhat is the nutrition in\b",
+        r"\bwhat is nutrition in\b",
+        r"\bwhat is the nutrition for\b",
+        r"\bwhat is nutrition for\b",
+        r"\bwhat is the nutrition of\b",
         r"\bwhat is the nutritional value of\b",
         r"\bwhat is the nutritional content of\b",
         r"\bwhat is the nutrition information for\b",
@@ -300,6 +371,8 @@ def clean_food_phrase(text: str) -> str:
         r"\bcalculate\b",
         r"\bi have eaten\b",
         r"\bi just ate\b",
+        r"\bi just had\b",
+        r"\bi just consumed\b",
         r"\bi ate\b",
         r"\bi eat\b",
         r"\bi had\b",
@@ -355,10 +428,13 @@ def clean_food_phrase(text: str) -> str:
     words = [
         word
         for word in text.split()
-        if word not in filler_words and word not in serving_words
+        if word not in filler_words
+        and word not in serving_words
     ]
 
-    return re.sub(r"\s+", " ", " ".join(words)).strip(" .")
+    return re.sub(
+        r"\s+", " ", " ".join(words)
+    ).strip(" .")
 
 
 # ============================================================
@@ -366,7 +442,7 @@ def clean_food_phrase(text: str) -> str:
 # ============================================================
 
 def singularize_food(food: str) -> str:
-    """Normalize simple plurals while preserving meaningful food names."""
+    """Normalize simple plurals while preserving meaningful names."""
 
     food = food.strip()
 
@@ -448,6 +524,7 @@ def parse_query(user_text: str) -> ParsedQuery:
         )
 
     corrected = correct_spelling(normalized)
+
     quantity, unit, remaining_text = extract_quantity(corrected)
     food = extract_food(remaining_text)
 
@@ -480,13 +557,14 @@ def quantity_to_grams(
 
     if unit == "g":
         return quantity
+
     if unit == "kg":
         return quantity * 1000
+
     if unit == "mg":
         return quantity / 1000
 
-    # A count such as 2 bananas cannot be converted accurately
-    # without an estimated or measured weight per item.
+    # Item counts require a food-specific serving weight.
     if unit == "piece":
         return None
 
@@ -525,6 +603,9 @@ if __name__ == "__main__":
         "I ate 150 grams of apple. Calculate the nutrients.",
         "How much fat is there in 250g of boiled potato?",
         "I had two boiled eggs for breakfast. What nutrients did I get?",
+        "What is the nutrition in 2 eggs?",
+        "What is the nutrition in two boiled eggs?",
+        "What is the nutrition in 200g of apple?",
     ]
 
     print("=" * 70)
