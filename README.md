@@ -1,858 +1,383 @@
-# 🥗 Food Nutrition Chatbot
-
-<div align="center">
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=220&section=header&text=Food%20Nutrition%20Chatbot&fontSize=42&fontAlignY=35&desc=NLP%20%7C%20Dynamic%20Food%20Retrieval%20%7C%20USDA%20FoodData%20Central&descAlignY=58&descSize=18" width="100%"/>
-
-<br>
-
-<img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=white"/>
-<img src="https://img.shields.io/badge/NLP-Natural%20Language%20Processing-purple?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Streamlit-1.65.0-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white"/>
-<img src="https://img.shields.io/badge/USDA-FoodData%20Central-green?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Tests-41%20Passed-success?style=for-the-badge"/>
-
-<br><br>
-
-**An NLP-powered nutrition assistant that understands natural-language food queries and dynamically retrieves nutrition information from USDA FoodData Central.**
-
-</div>
-
----
-
-# 📌 Overview
-
-**Food Nutrition Chatbot** is an intelligent NLP-based application that allows users to ask natural-language questions about food and receive structured nutritional information.
-
-Instead of relying on a small hardcoded food database, the chatbot uses **USDA FoodData Central** as its primary nutrition source. This allows users to enter a wide variety of foods dynamically.
-
-For example:
-
-```text
-banana
-200g banana
-I ate 150 grams of mango
-2 apples
-chickwn wings
-dragon fruit
-quinoa
-paneer
-salmon
-```
-
-The system extracts the **food name, quantity, unit, and intent**, retrieves the most relevant food from USDA, calculates nutrition according to the requested quantity, and presents the result through a Streamlit dashboard.
-
----
-
-# 🎯 Project Objective
-
-The main objective of this project is to build a practical NLP-based nutrition assistant that can:
-
-* 🧠 Understand natural-language food queries
-* 🔎 Dynamically retrieve food information
-* 🥗 Handle a wide range of food items
-* ✏️ Correct common food-name spelling mistakes
-* ⚖️ Understand quantities and units
-* 🧮 Calculate nutrition for requested quantities
-* 📊 Present nutrition information clearly
-* 🛡️ Avoid inventing nutrition values for unknown foods
-* 🧪 Validate functionality using automated tests
-
----
-
-# ✨ Key Features
-
-## 🧠 Natural Language Processing
-
-The chatbot understands different ways of asking for nutrition information.
-
-Examples:
-
-```text
-banana
-200g banana
-I ate 150 grams of mango
-Give me nutrition for 2 apples
-How much protein is in chicken?
-```
-
-The NLP layer identifies:
-
-* Food entity
-* Quantity
-* Unit
-* User intent
-
----
-
-## 🔤 Food Name Correction
-
-The system can handle common food-name typing mistakes.
-
-| User Input | Corrected Food |
-| ---------- | -------------- |
-| `bananna`  | banana         |
-| `banan`    | banana         |
-| `brocolli` | broccoli       |
-| `chiken`   | chicken        |
-| `chikn`    | chicken        |
-| `chickwn`  | chicken        |
-| `tomatos`  | tomato         |
-| `potatos`  | potato         |
-| `spinich`  | spinach        |
-| `avacado`  | avocado        |
-
-This correction layer improves the user's experience without turning the application into a fixed food database.
-
----
-
-# 🌎 Dynamic Food Retrieval
-
-One of the most important design decisions in this project is that the chatbot **does not depend on a fixed list of trained food items**.
-
-Instead:
-
-```text
-User Food Query
-       ↓
-NLP Food Extraction
-       ↓
-USDA FoodData Central Search
-       ↓
-Candidate Ranking
-       ↓
-Best Food Match
-       ↓
-Nutrition Extraction
-       ↓
-Quantity Calculation
-       ↓
-Chatbot Response
-```
-
-This means users can enter foods that were never explicitly hardcoded into the application.
-
-Examples include:
-
-* 🥭 Mango
-* 🍎 Apple
-* 🍌 Banana
-* 🐉 Dragon fruit
-* ❤️ Pomegranate
-* 🌾 Quinoa
-* 🐟 Salmon
-* 🧀 Paneer
-* 🌱 Tofu
-* 🥝 Kiwi
-* 🍈 Cantaloupe
-* 🌿 Asparagus
-* 🍗 Chicken
-* 🌰 Almonds
-* 🌱 Lentils
-* 🥔 Sweet potato
-* 🌳 Jackfruit
-
-The application retrieves available nutrition information dynamically from USDA FoodData Central.
-
----
-
-# 🏛️ System Architecture
-
-```text
-                    ┌──────────────────────┐
-                    │        USER          │
-                    │ Natural Language     │
-                    │       Query          │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    NLP PROCESSOR     │
-                    │                      │
-                    │ • Intent Detection   │
-                    │ • Food Extraction    │
-                    │ • Quantity Extraction│
-                    │ • Unit Detection     │
-                    │ • Spell Correction   │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   FOOD RETRIEVAL     │
-                    │                      │
-                    │ USDA FoodData        │
-                    │ Central API          │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │  MATCHING & RANKING  │
-                    │                      │
-                    │ • Exact matching     │
-                    │ • Generic food       │
-                    │ • Prepared food      │
-                    │ • Food variants      │
-                    │ • Match scoring      │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ NUTRITION EXTRACTION │
-                    │                      │
-                    │ Calories             │
-                    │ Protein              │
-                    │ Carbohydrates        │
-                    │ Fat                  │
-                    │ Fiber                │
-                    │ Sugar                │
-                    │ Minerals & Vitamins  │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ QUANTITY CALCULATION │
-                    │                      │
-                    │ grams / kg / mg      │
-                    │ serving / piece      │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    STREAMLIT UI      │
-                    │                      │
-                    │ Nutrition Dashboard  │
-                    │ Charts & Results     │
-                    └──────────────────────┘
-```
-
----
-
-# 🔄 NLP Processing Pipeline
-
-The chatbot processes every query through several stages.
-
-### 1️⃣ Input
-
-```text
-"I ate 200g banana"
-```
-
-### 2️⃣ Text Normalization
-
-The input is cleaned and normalized.
-
-### 3️⃣ Spelling Correction
-
-Common food-name errors are corrected.
-
-Example:
-
-```text
-chickwn → chicken
-```
-
-### 4️⃣ Food Extraction
-
-```text
-banana
-```
-
-### 5️⃣ Quantity Extraction
-
-```text
-200
-```
-
-### 6️⃣ Unit Detection
-
-```text
-g
-```
-
-### 7️⃣ Intent Detection
-
-```text
-nutrition
-```
-
-### 8️⃣ USDA Retrieval
-
-The extracted food is searched dynamically.
-
-### 9️⃣ Nutrition Calculation
-
-The retrieved nutrition values are scaled according to the requested amount.
-
-### 🔟 Response Generation
-
-The final nutritional information is displayed in a structured format.
-
----
-
-# 🥗 Nutrition Information
-
-The chatbot currently tracks important nutritional values including:
-
-| Nutrient         | Unit |
-| ---------------- | ---- |
-| 🔥 Calories      | kcal |
-| 💪 Protein       | g    |
-| 🍞 Carbohydrates | g    |
-| 🥑 Fat           | g    |
-| 🌾 Fiber         | g    |
-| 🍬 Sugar         | g    |
-| 🦴 Calcium       | mg   |
-| 🩸 Iron          | mg   |
-| 🧂 Sodium        | mg   |
-| 🍊 Vitamin C     | mg   |
-
----
-
-# ⚖️ Quantity & Serving Support
-
-The chatbot can process quantities such as:
-
-```text
-100g banana
-200g apple
-1 kg rice
-500 mg food
-2 apples
-1 serving
-```
-
-Nutrition values are calculated according to the requested quantity whenever sufficient serving information is available.
-
-For standardized nutrition data, the application uses the retrieved nutrition basis to scale values appropriately.
-
----
-
-# 🔎 Food Matching & Ranking
-
-USDA FoodData Central can return multiple possible matches for a search query.
-
-Therefore, the application does not simply accept the first API result.
-
-Instead, candidate foods are ranked using matching logic that considers:
-
-* Exact food-name matches
-* Generic food descriptions
-* Prepared foods
-* Combination foods
-* Specific food variants
-* Data type priority
-* Match score
-* Minimum acceptable confidence
-
-This reduces incorrect matches such as:
-
-```text
-User: chicken
-
-Incorrect:
-
-Chicken spread
-Chicken kiev
-Chicken cornbread
-
-Preferred:
-
-Chicken
-```
-
-The system also avoids treating every partial text match as a valid food.
-
----
-
-# 🛡️ Safe Handling of Unknown Foods
-
-The chatbot **does not invent nutrition values** when it cannot find a reliable match.
-
-For example:
-
-```text
-User:
-
-xyzabc food
-```
-
-The chatbot responds:
-
-```text
-I couldn't find reliable nutrition information for xyzabc food
-in the current food database.
-
-Please try another food name or provide a more specific description.
-```
-
-This is important because a nutrition application should prioritize **reliable retrieval over fabricated answers**.
-
----
-
-# 🖥️ Streamlit Dashboard
-
-The project includes a Streamlit-based interactive dashboard.
-
-The interface provides:
-
-* 🥗 Nutrition chatbot
-* 💬 Natural-language input
-* 📋 Structured nutrition cards
-* 📊 Macronutrient visualization
-* 🧾 USDA metadata
-* 🔄 Conversation history
-* 🧹 Clear conversation option
-* 💡 Example queries
-* ℹ️ Project information
-
----
-
-# 📸 Application Screenshots
-
-The application provides an interactive Streamlit dashboard for natural-language nutrition queries, dynamic USDA food retrieval, and nutrition analysis.
-
-### 🏠 Main Dashboard
+# 🥗 Food Nutrition Chatbot Using NLP — NutriBot
 
 <p align="center">
-  <img src="screenshots/dashboard.png" width="92%">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:11998e,100:38ef7d&height=200&section=header&text=NutriBot&fontSize=65&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=AI-Powered%20Nutrition%20Assistant&descAlignY=58&descSize=20" width="100%" alt="NutriBot banner"/>
 </p>
-
-The main dashboard provides the chatbot interface, quick examples, nutrition guidance, and USDA connection status.
-
-### 🍌 Nutrition Result
 
 <p align="center">
-  <img src="screenshots/result01.png" width="92%">
+  <b>Ask about any food. Understand its nutrition. Make informed food choices.</b>
 </p>
-
-The chatbot displays retrieved nutrition information including calories, protein, carbohydrates, fat, fiber, sugar, minerals, vitamins, USDA data type, FDC ID, and match score.
-
-### 📊 Nutrition Analysis
 
 <p align="center">
-  <img src="screenshots/result02.png" width="92%">
+  <a href="https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/">
+    <img src="https://img.shields.io/badge/🚀_Live_Demo-Open_NutriBot-FF4B4B?style=for-the-badge" alt="Live Demo"/>
+  </a>
+  <a href="https://github.com/NRachana015/food-nutrition-chatbot">
+    <img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github" alt="GitHub Repository"/>
+  </a>
 </p>
 
-The nutrition result view also provides a visual representation of macronutrient information for easier interpretation.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/NLP-Natural%20Language%20Processing-8A2BE2?style=flat-square" alt="NLP"/>
+  <img src="https://img.shields.io/badge/Streamlit-Web%20Application-FF4B4B?style=flat-square&logo=streamlit&logoColor=white" alt="Streamlit"/>
+  <img src="https://img.shields.io/badge/Data-USDA%20FoodData%20Central-228B22?style=flat-square" alt="USDA"/>
+  <img src="https://img.shields.io/badge/Testing-Pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white" alt="Pytest"/>
+</p>
 
 ---
 
-# 🧪 Testing
+## 📌 Project Overview
 
-The project includes automated tests using **pytest**.
+**NutriBot** is an AI-powered nutrition chatbot that uses Natural Language Processing (NLP) and the USDA FoodData Central API to retrieve nutritional information about foods.
 
-The test suite validates:
+Users can ask questions in natural language, specify food quantities, and view nutrition information through an interactive web interface.
 
-* NLP parsing
-* Food extraction
-* Quantity extraction
-* Unit conversion
-* Spelling correction
-* Chatbot responses
-* Nutrition scaling
-* Unknown food handling
-* Metadata generation
-* Different food inputs
+Unlike a chatbot restricted to a small hardcoded list of foods, NutriBot searches an external food database dynamically and ranks possible matches to identify a suitable nutrition record.
 
-### Test Result
+The application displays calories, macronutrients, additional nutrients, and a graphical macronutrient profile.
+
+## 🌐 Live Application
+
+**Try NutriBot here:**
+
+👉 https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/
+
+The application is deployed using Streamlit Community Cloud.
+
+---
+
+## ✨ Key Features
+
+- 💬 **Natural Language Queries** — Ask nutrition questions using everyday language.
+- 🔎 **Dynamic Food Search** — Retrieve food records from USDA FoodData Central rather than relying on a small predefined nutrition dictionary.
+- 🧠 **NLP-Based Processing** — Normalize food names and process user queries.
+- ✍️ **Spelling Correction** — Handle supported misspellings, such as `chickwn wings`.
+- ⚖️ **Quantity-Based Calculations** — Calculate nutrition values for requested quantities when the quantity can be interpreted.
+- 🔥 **Calorie Information** — Display food energy in kilocalories (kcal).
+- 💪 **Macronutrient Analysis** — Display protein, carbohydrates, fat, and fiber.
+- 🧪 **Additional Nutrients** — Show available information for sugar, calcium, iron, sodium, and vitamin C.
+- 📊 **Interactive Nutrition Chart** — Visualize macronutrients using a horizontal bar chart.
+- 🛡️ **Reliable-Match Validation** — Apply food matching and scoring rules before displaying nutrition information.
+- 🚫 **Safe Unknown-Food Handling** — Inform users when a reliable food match cannot be found.
+- ☁️ **Cloud Deployment** — Access the chatbot through a web browser.
+- 🧪 **Automated Testing** — Validate important application behaviors using pytest.
+
+---
+
+## 🖥️ Application Screenshots
+
+### 1. NutriBot Dashboard
+
+![NutriBot Dashboard](dashboard.png)
+
+### 2. Nutrition Information
+
+![NutriBot Nutrition Results](result01.png)
+
+### 3. Additional Nutrition Results
+
+![NutriBot Additional Results](result02.png)
+
+---
+
+## 🥑 Nutritional Information Provided
+
+NutriBot can display the following values when they are available in the selected USDA food record.
+
+| Nutrient | Unit |
+|---|---|
+| Calories | kcal |
+| Protein | g |
+| Carbohydrates | g |
+| Fat | g |
+| Dietary Fiber | g |
+| Sugar | g |
+| Calcium | mg |
+| Iron | mg |
+| Sodium | mg |
+| Vitamin C | mg |
+
+The application also displays food-source metadata, including the USDA data type, FoodData Central ID (FDC ID), and match score.
+
+**Note:** Results depend on the selected USDA food record, available nutrient data, and the requested quantity. Nutrition values are estimates for the matched food, not personalized medical advice.
+
+---
+
+## 🔍 Example Queries
+
+Try asking NutriBot questions such as:
 
 ```text
-============================= test session starts =============================
+What is the nutrition in 100g banana?
 
-collected 41 items
+What is the nutrition in 2 eggs?
 
-41 passed
+What is the nutrition in 200g mango?
 
-============================== 41 passed in 0.21s ==============================
+What is the nutrition in dragon fruit?
+
+What is the nutrition in chickwn wings?
+
+What is the nutrition in xyzabc food?
 ```
 
-The chatbot therefore currently has:
+Expected behavior:
 
-**✅ 41 automated tests passing**
-
----
-
-# 🛠️ Technology Stack
-
-| Technology               | Purpose                           |
-| ------------------------ | --------------------------------- |
-| 🐍 Python                | Core programming language         |
-| 🧠 NLP                   | Natural-language query processing |
-| 🌐 USDA FoodData Central | Dynamic nutrition data            |
-| 🎨 Streamlit             | Interactive web application       |
-| 📊 Pandas                | Data processing                   |
-| 🔎 RapidFuzz             | Text similarity and matching      |
-| 🌍 Requests              | API communication                 |
-| 🔐 python-dotenv         | Environment variable management   |
-| 🧪 Pytest                | Automated testing                 |
-| 🔧 Git & GitHub          | Version control                   |
+- Recognized foods return available nutrition information.
+- Supported spelling corrections can help identify the intended food.
+- Quantity-based requests calculate nutrition for the interpreted quantity.
+- Unknown foods receive a helpful message rather than fabricated nutrition values.
 
 ---
 
-# 📂 Project Structure
+## ⚙️ Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Python | Core application logic |
+| Natural Language Processing | Query processing and food-name normalization |
+| USDA FoodData Central API | External food and nutrition data |
+| Requests | HTTP communication with the API |
+| RapidFuzz | Fuzzy text matching |
+| Streamlit | Interactive web application |
+| Plotly | Nutrition data visualization |
+| python-dotenv | Local environment configuration |
+| Pytest | Automated testing |
+| Git and GitHub | Version control and project hosting |
+| Streamlit Community Cloud | Application deployment |
+
+---
+
+## 🏗️ System Architecture
+
+```text
+        User
+         |
+         v
+  Natural Language Query
+         |
+         v
+    Streamlit UI
+         |
+         v
+   NLP Processing
+         |
+         v
+ Food Name & Quantity
+     Identification
+         |
+         v
+ Dynamic USDA API Search
+         |
+         v
+   Food Match Ranking
+         |
+         v
+  Nutrition Extraction
+         |
+         v
+ Quantity-Based Calculation
+         |
+         v
+ Nutrition Summary + Chart
+         |
+         v
+    User Response
+```
+
+---
+
+## 🔄 How It Works
+
+1. **User input:** The user enters a food-related question.
+2. **NLP processing:** The application processes the query and normalizes the food name.
+3. **Quantity interpretation:** The system identifies the requested amount when supported.
+4. **Dynamic retrieval:** The nutrition service searches USDA FoodData Central.
+5. **Food matching:** Candidate records are evaluated and ranked using the project's matching rules.
+6. **Nutrition extraction:** Available nutrient values are extracted from the selected record.
+7. **Calculation:** Values are adjusted for the requested quantity when applicable.
+8. **Visualization:** The application displays nutrition information and a macronutrient chart.
+9. **Safe response:** If no sufficiently reliable match is found, the chatbot reports that it could not find reliable information.
+
+---
+
+## 📂 Project Structure
 
 ```text
 food-nutrition-chatbot/
 │
-├── 📄 app.py
-├── 📄 chatbot.py
-├── 📄 config.py
-├── 📄 food_matcher.py
-├── 📄 nlp_processor.py
-├── 📄 nutrition_service.py
-├── 📄 recommender.py
+├── app.py
+├── chatbot.py
+├── nlp_processor.py
+├── nutrition_service.py
+├── config.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
 │
-├── 📄 requirements.txt
-├── 📄 .env.example
-├── 📄 .gitignore
-├── 📄 RUN_CHATBOT.bat
+├── dashboard.png
+├── result01.png
+├── result02.png
 │
-├── 📁 data/
-├── 📁 models/
-├── 📁 notebooks/
-├── 📁 screenshots/
-│
-└── 📁 tests/
-    └── 📄 test_chatbot.py
+└── README.md
 ```
+
+Additional files, such as tests and configuration files, may also be present in the repository.
 
 ---
 
-# 🚀 Installation & Setup
+## 🚀 Run Locally
 
-## 1️⃣ Clone the Repository
+### Prerequisites
+
+- Python 3.12 recommended
+- Git
+- A USDA FoodData Central API key
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/NRachana015/food-nutrition-chatbot.git
 ```
 
+### 2. Enter the project directory
+
 ```bash
 cd food-nutrition-chatbot
 ```
 
----
-
-## 2️⃣ Create a Virtual Environment
+### 3. Create a virtual environment
 
 ```bash
 python -m venv venv
 ```
 
-### Windows
+### 4. Activate the environment
+
+**Windows PowerShell:**
 
 ```powershell
-venv\Scripts\activate
+.\venv\Scripts\Activate.ps1
 ```
 
----
-
-## 3️⃣ Install Dependencies
+### 5. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
----
+### 6. Configure the USDA API key
 
-# 🔐 USDA API Configuration
+Obtain an API key from the USDA FoodData Central website:
 
-The project uses the **USDA FoodData Central API**.
+https://fdc.nal.usda.gov/api-guide.html
 
-Create a `.env` file in the project root:
+Create a local `.env` file in the project directory and add:
 
-```text
-USDA_API_KEY=your_usda_api_key_here
+```env
+USDA_API_KEY=your_actual_api_key
 ```
 
-You can use `.env.example` as a template.
+Replace the placeholder with your own key.
 
-### Important Security Rule
+**Security:** Never commit `.env` or publish your real API key. For Streamlit Cloud, configure the key through the application's Secrets settings.
 
-Never commit your real API key to GitHub.
+### 7. Start the application
 
-The project uses:
-
-```text
-.env
-```
-
-in `.gitignore`.
-
-Only the following template should be publicly visible:
-
-```text
-.env.example
-```
-
-with:
-
-```text
-USDA_API_KEY=your_usda_api_key_here
-```
-
----
-
-# ▶️ Running the Application
-
-After activating the virtual environment:
-
-```powershell
+```bash
 streamlit run app.py
 ```
 
-The Streamlit application will open in your browser.
-
----
-
-# ⚡ One-Click Launcher
-
-For Windows users, the project also includes:
+Open the local URL shown in your terminal, usually:
 
 ```text
-RUN_CHATBOT.bat
+http://localhost:8501
 ```
-
-You can run the launcher to automatically:
-
-1. Open the project directory
-2. Activate the virtual environment
-3. Start Streamlit
-4. Launch the chatbot
-
-This makes it easier to run the project later without repeatedly typing commands.
 
 ---
 
-# 🧪 Running Tests
+## 🧪 Running Tests
 
-Run the complete test suite with:
+Activate your virtual environment and run:
 
-```powershell
+```bash
 python -m pytest -v
 ```
 
-Expected result:
-
-```text
-41 passed
-```
+The project's previously recorded test run completed with **41 passed**. Run the tests again against the current code to verify the latest repository state.
 
 ---
 
-# 💡 Example Queries
+## 🔐 Security and Data Reliability
 
-The chatbot can handle inputs such as:
-
-```text
-banana
-```
-
-```text
-200g banana
-```
-
-```text
-I ate 150 grams of mango
-```
-
-```text
-dragon fruit
-```
-
-```text
-quinoa
-```
-
-```text
-paneer
-```
-
-```text
-salmon
-```
-
-```text
-chickwn wings
-```
-
-```text
-2 apples
-```
-
-```text
-xyzabc food
-```
-
-The final example demonstrates safe handling of an unavailable food.
+- API credentials are configured through environment variables or Streamlit Secrets.
+- The `.env` file should remain excluded from version control.
+- Nutrition values are retrieved from external food records when a reliable match is available.
+- Match scoring helps distinguish suitable food records from unsuitable alternatives.
+- Unrecognized food queries should not be answered with invented nutrition values.
+- USDA data may differ depending on the food description, preparation method, and dataset selected.
 
 ---
 
-# 🧠 Design Philosophy
+## 🎯 Project Objectives
 
-This project follows several important principles.
-
-### 1. Dynamic over Hardcoded
-
-The application does not rely on a small predefined food list.
-
-### 2. Retrieval over Hallucination
-
-Nutrition values are retrieved from an external trusted data source rather than generated arbitrarily.
-
-### 3. Safe Failure
-
-If a reliable food match cannot be found, the chatbot tells the user instead of producing fabricated nutrition values.
-
-### 4. User-Friendly NLP
-
-Users can communicate using natural language instead of strict commands.
-
-### 5. Modular Architecture
-
-NLP, retrieval, nutrition processing, chatbot logic, and UI are separated into different modules.
-
-### 6. Testable Components
-
-Core functionality is covered by automated tests.
+- Build an interactive NLP-based nutrition assistant.
+- Integrate an external food database through an API.
+- Support natural-language food queries.
+- Process food names and quantities.
+- Apply matching and validation rules to food search results.
+- Calculate nutrition for supported quantities.
+- Present results in a clear visual format.
+- Handle unsupported food queries safely.
+- Deploy a Python application to the cloud.
 
 ---
 
-# 🔒 Security
+## 🔮 Future Enhancements
 
-Sensitive API credentials are stored locally using environment variables.
-
-```text
-.env
-```
-
-is excluded from Git using `.gitignore`.
-
-The repository contains only:
-
-```text
-.env.example
-```
-
-with a placeholder API key.
-
-**Never publish your real USDA API key.**
+- 🥗 Meal-level nutrition analysis
+- 📅 Daily nutrition tracking
+- 👤 Personalized nutrition profiles
+- 📈 Nutrition history and analytics
+- 🎙️ Voice-based food queries
+- 🌐 Multilingual food-name support
+- 🔍 Further improvements to semantic food matching
+- 📱 Enhanced mobile experience
+- 📥 Nutrition report export
+- 🧾 Broader food-source integration
 
 ---
 
-# 🔮 Future Enhancements
+## 👩‍💻 Author
 
-Potential future improvements include:
+<p align="center">
+  <b>Rachana Nyavanandhi</b><br/>
+  B.Tech — Artificial Intelligence and Machine Learning
+</p>
 
-* 🤖 Conversational nutrition recommendations
-* 🥗 Meal-level nutrition analysis
-* 📅 Daily nutrition tracking
-* 👤 Personalized nutrition profiles
-* 📈 Nutrition history dashboards
-* 🛒 Packaged-food support through additional food databases
-* 🌐 Multilingual food queries
-* 🎙️ Voice-based food input
-* 🧠 Advanced food entity recognition
-* 🔍 Improved semantic food matching
-* 📱 Mobile-friendly deployment
-* ☁️ Cloud deployment
+<p align="center">
+  <a href="https://github.com/NRachana015">
+    <img src="https://img.shields.io/badge/GitHub-NRachana015-181717?style=for-the-badge&logo=github" alt="GitHub Profile"/>
+  </a>
+</p>
 
----
-
-# 📚 Learning Outcomes
-
-This project provided practical experience with:
-
-* Natural Language Processing
-* Entity extraction
-* Intent detection
-* Text normalization
-* Spell correction
-* API integration
-* External data retrieval
-* Fuzzy matching
-* Data transformation
-* Unit conversion
-* Nutrition calculation
-* Streamlit application development
-* Automated testing
-* Environment-variable security
-* Git and GitHub
-* Software project organization
-
----
-
-# 🌟 Why This Project Matters
-
-Many simple nutrition chatbot projects depend on a small hardcoded dictionary such as:
-
-```python
-{
-    "apple": {...},
-    "banana": {...},
-    "mango": {...}
-}
-```
-
-That approach limits the chatbot to foods explicitly included by the developer.
-
-This project takes a more scalable approach:
-
-```text
-Natural Language
-       ↓
-NLP Processing
-       ↓
-Dynamic Food Search
-       ↓
-USDA FoodData Central
-       ↓
-Food Matching
-       ↓
-Nutrition Calculation
-       ↓
-User-Friendly Response
-```
-
-Therefore, the application is designed as a **dynamic retrieval-based nutrition assistant**, rather than a chatbot restricted to a predefined food list.
-
----
-
-# 👩‍💻 Author and Connect
-
-<div align="center">
-
-## **Rachana Nyavanandhi**
-
-### 🎓 B.Tech — Artificial Intelligence & Machine Learning
-
-🧠 Artificial Intelligence
-🤖 Machine Learning
-💬 Natural Language Processing
-✨ Generative AI
-📊 Data Analytics
-
-</div>
-
-### 🔗 Connect With Me
-
-**GitHub:**
-
-https://github.com/NRachana015
-
-**Project Repository:**
-
+**Project Repository:**  
 https://github.com/NRachana015/food-nutrition-chatbot
 
+**Live Demo:**  
+https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/
+
 ---
 
-<div align="center">
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:11998e,100:38ef7d&height=120&section=footer" width="100%" alt="Footer banner"/>
+</p>
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=140&section=footer" width="100%"/>
+<p align="center">
+  <b>🥗 NutriBot — Natural Language Processing • Dynamic Food Retrieval • Nutrition Visualization</b>
+</p>
 
-### 🥗 Food Nutrition Chatbot
-
-**Natural Language Processing • Dynamic Food Retrieval • USDA FoodData Central**
-
-⭐ **If you found this project useful, consider giving the repository a star!**
-
-</div>
+<p align="center">
+  ⭐ If you find this project useful, consider giving the repository a star!
+</p>
