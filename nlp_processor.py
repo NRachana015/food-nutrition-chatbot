@@ -7,30 +7,23 @@ from typing import Optional
 # ============================================================
 # COMMON TYPO CORRECTIONS
 # ============================================================
-# This is NOT a food database.
-# It only fixes common spelling mistakes.
-#
-# Food availability is still determined dynamically
-# through USDA FoodData Central later in the pipeline.
+# This is a typo-correction dictionary, NOT a food database.
+# Food information is retrieved dynamically from USDA later.
 COMMON_CORRECTIONS = {
     "bananna": "banana",
     "banan": "banana",
-
     "brocolli": "broccoli",
     "brocoli": "broccoli",
-
     "chiken": "chicken",
     "chikn": "chicken",
     "chickn": "chicken",
     "chickwn": "chicken",
-
     "tomatos": "tomato",
     "potatos": "potato",
-
     "spinich": "spinach",
     "carot": "carrot",
-
     "aple": "apple",
+    "apl": "apple",
     "oragne": "orange",
     "strawbery": "strawberry",
     "avacado": "avocado",
@@ -40,7 +33,6 @@ COMMON_CORRECTIONS = {
 # ============================================================
 # NUMBER WORDS
 # ============================================================
-
 NUMBER_WORDS = {
     "zero": 0,
     "one": 1,
@@ -59,82 +51,33 @@ NUMBER_WORDS = {
 # ============================================================
 # SUPPORTED QUANTITY UNITS
 # ============================================================
-
-GRAM_UNITS = {
-    "g",
-    "gram",
-    "grams",
-    "gm",
-    "gms",
-}
-
+GRAM_UNITS = {"g", "gram", "grams", "gm", "gms"}
 KILOGRAM_UNITS = {
-    "kg",
-    "kilogram",
-    "kilograms",
-    "kilo",
-    "kilos",
+    "kg", "kilogram", "kilograms", "kilo", "kilos"
 }
+MILLIGRAM_UNITS = {"mg", "milligram", "milligrams"}
+PIECE_UNITS = {"piece", "pieces", "pc", "pcs", "item", "items"}
 
-MILLIGRAM_UNITS = {
-    "mg",
-    "milligram",
-    "milligrams",
-}
-
-PIECE_UNITS = {
-    "piece",
-    "pieces",
-    "pc",
-    "pcs",
-    "item",
-    "items",
-}
-
-ALL_UNITS = (
-    GRAM_UNITS
-    | KILOGRAM_UNITS
-    | MILLIGRAM_UNITS
-    | PIECE_UNITS
-)
+ALL_UNITS = GRAM_UNITS | KILOGRAM_UNITS | MILLIGRAM_UNITS | PIECE_UNITS
 
 
 # ============================================================
 # INTENT KEYWORDS
 # ============================================================
-
 NUTRITION_KEYWORDS = {
-    "nutrition",
-    "nutritional",
-    "nutrients",
-    "nutrient",
-    "calorie",
-    "calories",
-    "protein",
-    "carbohydrate",
-    "carbohydrates",
-    "carbs",
-    "fat",
-    "fiber",
-    "fibre",
-    "vitamin",
-    "vitamins",
-    "mineral",
-    "minerals",
-    "healthy",
+    "nutrition", "nutritional", "nutrients", "nutrient",
+    "calorie", "calories", "protein", "carbohydrate",
+    "carbohydrates", "carbs", "fat", "fiber", "fibre",
+    "vitamin", "vitamins", "mineral", "minerals", "healthy",
 }
 
 
 # ============================================================
 # RESULT DATA STRUCTURE
 # ============================================================
-
 @dataclass
 class ParsedQuery:
-    """
-    Structured representation of a user's food query.
-    """
-
+    """Structured representation of a user's food query."""
     original_text: str
     food: Optional[str]
     quantity: Optional[float]
@@ -145,75 +88,36 @@ class ParsedQuery:
 # ============================================================
 # TEXT NORMALIZATION
 # ============================================================
-
 def normalize_text(text: str) -> str:
-    """
-    Normalize user input.
-
-    Example:
-        "  I ATE 200G BANANNA!!! "
-        ->
-        "i ate 200g bananna"
-    """
-
+    """Normalize input text."""
     if not isinstance(text, str):
         return ""
 
     text = text.lower().strip()
-
-    # Normalize curly apostrophes.
     text = text.replace("â€™", "'")
-
-    # Keep letters, numbers, spaces and decimal points.
     text = re.sub(r"[^a-z0-9.\s]", " ", text)
-
-    # Remove repeated spaces.
     text = re.sub(r"\s+", " ", text)
-
     return text.strip()
 
 
 # ============================================================
 # TYPO CORRECTION
 # ============================================================
-
 def correct_word(word: str) -> str:
-    """
-    Correct a known common typo.
-
-    Unknown food names are left unchanged.
-    """
-
+    """Correct a known typo; leave unknown words unchanged."""
     return COMMON_CORRECTIONS.get(word, word)
 
 
 def correct_spelling(text: str) -> str:
-    """
-    Apply typo correction word-by-word.
-
-    This does NOT determine whether a word is a food.
-    USDA will perform the actual food lookup later.
-    """
-
-    words = text.split()
-
-    corrected_words = [
-        correct_word(word)
-        for word in words
-    ]
-
-    return " ".join(corrected_words)
+    """Correct known spelling mistakes word by word."""
+    return " ".join(correct_word(word) for word in text.split())
 
 
 # ============================================================
 # NUMBER PARSING
 # ============================================================
-
 def parse_number(value: str) -> Optional[float]:
-    """
-    Convert numeric text or a number word into a float.
-    """
-
+    """Convert a number or number word to float."""
     value = value.strip().lower()
 
     if value in NUMBER_WORDS:
@@ -228,29 +132,16 @@ def parse_number(value: str) -> Optional[float]:
 # ============================================================
 # UNIT NORMALIZATION
 # ============================================================
-
 def normalize_unit(unit: str) -> str:
-    """
-    Convert different unit spellings into a standard unit.
-
-    Examples:
-        grams -> g
-        kilogram -> kg
-        milligrams -> mg
-        pieces -> piece
-    """
-
+    """Normalize supported quantity units."""
     unit = unit.lower().strip()
 
     if unit in GRAM_UNITS:
         return "g"
-
     if unit in KILOGRAM_UNITS:
         return "kg"
-
     if unit in MILLIGRAM_UNITS:
         return "mg"
-
     if unit in PIECE_UNITS:
         return "piece"
 
@@ -260,201 +151,86 @@ def normalize_unit(unit: str) -> str:
 # ============================================================
 # QUANTITY EXTRACTION
 # ============================================================
-
 def extract_quantity(text: str):
     """
-    Extract quantity and unit from the query.
+    Return (quantity, unit, remaining_text).
 
-    Examples:
-
-        "200g banana"
-            -> 200, "g"
-
-        "200 grams mango"
-            -> 200, "g"
-
-        "2 kg watermelon"
-            -> 2, "kg"
-
-        "one apple"
-            -> 1, "piece"
-
-        "two bananas"
-            -> 2, "piece"
-
-    Returns:
-        quantity, unit, remaining_text
+    Supports:
+        200g banana
+        200 grams mango
+        2 kg rice
+        2 apples
+        two bananas
     """
-
     text = text.strip()
-
-    # --------------------------------------------------------
-    # Build unit pattern.
-    # Longest units are checked first.
-    # --------------------------------------------------------
 
     unit_pattern = "|".join(
         sorted(
-            [re.escape(unit) for unit in ALL_UNITS],
+            (re.escape(unit) for unit in ALL_UNITS),
             key=len,
             reverse=True,
         )
     )
 
-    # --------------------------------------------------------
-    # Pattern 1:
-    # numeric quantity + unit
-    #
-    # Examples:
-    # 200g
-    # 200 grams
-    # 2 kg
-    # 500 mg
-    # --------------------------------------------------------
-
-    numeric_unit_pattern = (
-        rf"\b(\d+(?:\.\d+)?)\s*({unit_pattern})\b"
-    )
-
+    # Numeric quantity + unit
     match = re.search(
-        numeric_unit_pattern,
+        rf"\b(\d+(?:\.\d+)?)\s*({unit_pattern})\b",
         text,
     )
 
     if match:
-
         quantity = float(match.group(1))
-        raw_unit = match.group(2)
-
-        unit = normalize_unit(raw_unit)
-
-        remaining_text = (
-            text[:match.start()]
-            + " "
-            + text[match.end():]
-        )
-
-        remaining_text = re.sub(
-            r"\s+",
-            " ",
-            remaining_text,
+        unit = normalize_unit(match.group(2))
+        remaining = (
+            text[:match.start()] + " " + text[match.end():]
         ).strip()
 
-        return quantity, unit, remaining_text
-
-    # --------------------------------------------------------
-    # Pattern 2:
-    # number word + unit
-    #
-    # Examples:
-    # two kg rice
-    # five grams almonds
-    # --------------------------------------------------------
+        return quantity, unit, re.sub(r"\s+", " ", remaining)
 
     number_word_pattern = "|".join(
         sorted(
-            [re.escape(word) for word in NUMBER_WORDS],
+            (re.escape(word) for word in NUMBER_WORDS),
             key=len,
             reverse=True,
         )
     )
 
-    word_unit_pattern = (
-        rf"\b({number_word_pattern})\s+({unit_pattern})\b"
-    )
-
+    # Number word + unit
     match = re.search(
-        word_unit_pattern,
+        rf"\b({number_word_pattern})\s+({unit_pattern})\b",
         text,
     )
 
     if match:
-
         quantity = parse_number(match.group(1))
-        raw_unit = match.group(2)
-
-        unit = normalize_unit(raw_unit)
-
-        remaining_text = (
-            text[:match.start()]
-            + " "
-            + text[match.end():]
-        )
-
-        remaining_text = re.sub(
-            r"\s+",
-            " ",
-            remaining_text,
+        unit = normalize_unit(match.group(2))
+        remaining = (
+            text[:match.start()] + " " + text[match.end():]
         ).strip()
 
-        return quantity, unit, remaining_text
+        return quantity, unit, re.sub(r"\s+", " ", remaining)
 
-    # --------------------------------------------------------
-    # Pattern 3:
-    # numeric quantity + food
-    #
-    # Examples:
-    # 2 bananas
-    # 3 apples
-    # --------------------------------------------------------
-
-    numeric_piece_pattern = (
-        r"^\s*(\d+(?:\.\d+)?)\s+(.+?)\s*$"
+    # Numeric count + food, e.g. 2 apples
+    match = re.match(
+        r"^\s*(\d+(?:\.\d+)?)\s+(.+?)\s*$",
+        text,
     )
 
+    if match and match.group(2).strip():
+        return float(match.group(1)), "piece", match.group(2).strip()
+
+    # Number word + food, e.g. two apples
     match = re.match(
-        numeric_piece_pattern,
+        rf"^\s*({number_word_pattern})\s+(.+?)\s*$",
         text,
     )
 
     if match:
-
-        quantity = float(match.group(1))
-        remaining_text = match.group(2).strip()
-
-        if remaining_text:
-
-            return (
-                quantity,
-                "piece",
-                remaining_text,
-            )
-
-    # --------------------------------------------------------
-    # Pattern 4:
-    # number word + food
-    #
-    # Examples:
-    # one apple
-    # two bananas
-    # three oranges
-    # --------------------------------------------------------
-
-    word_piece_pattern = (
-        rf"^\s*({number_word_pattern})\s+(.+?)\s*$"
-    )
-
-    match = re.match(
-        word_piece_pattern,
-        text,
-    )
-
-    if match:
-
         quantity = parse_number(match.group(1))
-        remaining_text = match.group(2).strip()
+        remaining = match.group(2).strip()
 
-        if quantity is not None and remaining_text:
-
-            return (
-                quantity,
-                "piece",
-                remaining_text,
-            )
-
-    # --------------------------------------------------------
-    # No quantity found.
-    # --------------------------------------------------------
+        if quantity is not None and remaining:
+            return quantity, "piece", remaining
 
     return None, None, text
 
@@ -462,21 +238,8 @@ def extract_quantity(text: str):
 # ============================================================
 # SIMPLE FOOD SINGULARIZATION
 # ============================================================
-
 def singularize_food(food: str) -> str:
-    """
-    Convert simple plural food names to singular.
-
-    Examples:
-        bananas  -> banana
-        apples   -> apple
-        tomatoes -> tomato
-        potatoes -> potato
-        berries  -> berry
-
-    This is NOT a food database.
-    """
-
+    """Convert simple plural food names to singular."""
     words = food.split()
 
     if not words:
@@ -484,17 +247,10 @@ def singularize_food(food: str) -> str:
 
     last = words[-1]
 
-    # berries -> berry
     if len(last) > 4 and last.endswith("ies"):
         last = last[:-3] + "y"
-
-    # tomatoes -> tomato
     elif len(last) > 4 and last.endswith("oes"):
         last = last[:-2]
-
-    # apples -> apple
-    #
-    # Do not remove "s" from words ending in "ss".
     elif (
         len(last) > 3
         and last.endswith("s")
@@ -503,22 +259,20 @@ def singularize_food(food: str) -> str:
         last = last[:-1]
 
     words[-1] = last
-
     return " ".join(words)
 
 
 # ============================================================
-# REMOVE COMMON CHATBOT PHRASES
+# REMOVE CONVERSATIONAL AND SERVING WORDS
 # ============================================================
-
 def clean_food_phrase(text: str) -> str:
     """
-    Remove conversational phrases that are not part
-    of the food name.
+    Remove conversational phrases and common serving descriptors.
 
-    This does NOT use a fixed food list.
+    Note: removing serving words does NOT determine serving weight.
+    A cup or slice must not be converted to grams without reliable
+    portion information.
     """
-
     text = text.strip()
 
     removable_phrases = [
@@ -552,35 +306,27 @@ def clean_food_phrase(text: str) -> str:
     ]
 
     for pattern in removable_phrases:
+        text = re.sub(pattern, " ", text, flags=re.IGNORECASE)
 
-        text = re.sub(
-            pattern,
-            " ",
-            text,
-            flags=re.IGNORECASE,
-        )
-
-    # Remove conversational filler words.
-    filler_words = {
-        "please",
-        "give",
-        "me",
-        "information",
-        "details",
-        "about",
-        "for",
-        "of",
-        "the",
-        "is",
-        "are",
+    # These words describe a serving rather than the food itself.
+    serving_descriptors = {
+        "small", "medium", "large",
+        "cup", "cups", "bowl", "bowls",
+        "plate", "plates", "glass", "glasses",
+        "slice", "slices", "serving", "servings",
     }
 
-    words = text.split()
+    filler_words = {
+        "a", "an", "please", "give", "me",
+        "information", "details", "about", "for",
+        "of", "the", "is", "are",
+    }
 
     cleaned_words = [
         word
-        for word in words
+        for word in text.split()
         if word.lower() not in filler_words
+        and word.lower() not in serving_descriptors
     ]
 
     return " ".join(cleaned_words).strip()
@@ -589,94 +335,39 @@ def clean_food_phrase(text: str) -> str:
 # ============================================================
 # INTENT DETECTION
 # ============================================================
-
 def detect_intent(text: str) -> str:
-    """
-    Detect the main intent.
-
-    At this stage the chatbot is focused on nutrition queries.
-    """
-
-    text = text.lower()
-
-    words = set(text.split())
+    """Detect nutrition intent; food-only queries default to nutrition."""
+    words = set(text.lower().split())
 
     if words.intersection(NUTRITION_KEYWORDS):
         return "nutrition"
 
-    # A food-only query such as "banana" is also interpreted
-    # as a nutrition request.
     return "nutrition"
 
 
 # ============================================================
 # FOOD EXTRACTION
 # ============================================================
-
 def extract_food(text: str) -> Optional[str]:
-    """
-    Extract the food phrase after removing:
-    - conversational phrases
-    - quantity information
-    - units
-    - filler words
-
-    The returned food is NOT validated here.
-
-    USDA performs the actual food lookup later.
-    """
-
+    """Extract a food phrase after removing conversational words."""
     cleaned = clean_food_phrase(text)
 
     if not cleaned:
         return None
 
-    # Remove an accidental numeric quantity at the beginning.
-    cleaned = re.sub(
-        r"^\d+(?:\.\d+)?\s*",
-        "",
-        cleaned,
-    ).strip()
-
+    cleaned = re.sub(r"^\d+(?:\.\d+)?\s*", "", cleaned).strip()
     return cleaned if cleaned else None
 
 
 # ============================================================
 # MAIN QUERY PARSER
 # ============================================================
-
 def parse_query(user_text: str) -> ParsedQuery:
-    """
-    Convert natural-language user input into structured data.
-
-    Examples:
-
-        "200g banana"
-
-        -> food = banana
-           quantity = 200
-           unit = g
-           intent = nutrition
-
-
-        "two apples"
-
-        -> food = apple
-           quantity = 2
-           unit = piece
-           intent = nutrition
-    """
-
+    """Convert natural-language input into structured query data."""
     original_text = user_text
-
-    # --------------------------------------------------------
-    # 1. Normalize text
-    # --------------------------------------------------------
-
     normalized = normalize_text(user_text)
 
     if not normalized:
-
         return ParsedQuery(
             original_text=original_text,
             food=None,
@@ -685,43 +376,13 @@ def parse_query(user_text: str) -> ParsedQuery:
             intent="unknown",
         )
 
-    # --------------------------------------------------------
-    # 2. Correct common spelling mistakes
-    # --------------------------------------------------------
-
     corrected = correct_spelling(normalized)
 
-    # --------------------------------------------------------
-    # 3. Extract quantity and unit
-    # --------------------------------------------------------
-
-    quantity, unit, remaining_text = extract_quantity(
-        corrected
-    )
-
-    # --------------------------------------------------------
-    # 4. Extract food name
-    # --------------------------------------------------------
-
+    quantity, unit, remaining_text = extract_quantity(corrected)
     food = extract_food(remaining_text)
-
-    # --------------------------------------------------------
-    # 5. Singularize only piece-based food quantities
-    #
-    # Example:
-    # 2 bananas -> banana
-    #
-    # We do not force singularization for gram-based
-    # queries because the user's original food phrase
-    # should otherwise remain untouched.
-    # --------------------------------------------------------
 
     if food and unit == "piece":
         food = singularize_food(food)
-
-    # --------------------------------------------------------
-    # 6. Detect intent
-    # --------------------------------------------------------
 
     intent = detect_intent(corrected)
 
@@ -737,26 +398,11 @@ def parse_query(user_text: str) -> ParsedQuery:
 # ============================================================
 # QUANTITY TO GRAMS
 # ============================================================
-
 def quantity_to_grams(
     quantity: Optional[float],
     unit: Optional[str],
 ) -> Optional[float]:
-    """
-    Convert measurable mass units to grams.
-
-    Examples:
-        200 g  -> 200 g
-        2 kg   -> 2000 g
-        500 mg -> 0.5 g
-
-    Piece quantities intentionally return None.
-
-    We do NOT invent the weight of one food item.
-    The actual piece weight will later come from
-    USDA portion information when available.
-    """
-
+    """Convert mass units to grams; piece counts need portion data."""
     if quantity is None or unit is None:
         return None
 
@@ -764,13 +410,10 @@ def quantity_to_grams(
 
     if unit == "g":
         return quantity
-
     if unit == "kg":
         return quantity * 1000
-
     if unit == "mg":
         return quantity / 1000
-
     if unit == "piece":
         return None
 
@@ -778,11 +421,9 @@ def quantity_to_grams(
 
 
 # ============================================================
-# TESTING
+# MANUAL TESTS
 # ============================================================
-
 if __name__ == "__main__":
-
     test_queries = [
         "banana",
         "200g banana",
@@ -790,19 +431,17 @@ if __name__ == "__main__":
         "I ate 50 g almonds",
         "2 bananas",
         "one apple",
-        "100 grams paneer",
-        "50g almonds",
         "tell me nutrition of mango",
         "what are the calories in dragon fruit",
         "I ate 2 kg watermelon",
         "two apples",
         "3 tomatoes",
-        "two potatoes",
         "500 mg spinach",
         "bananna",
         "I had 150 grams of brocolli",
-        "3 berries",
         "i ate chickwn wings",
+        "apl",
+        "I ate a small cup of cake",
     ]
 
     print("=" * 70)
@@ -810,23 +449,14 @@ if __name__ == "__main__":
     print("=" * 70)
 
     for query in test_queries:
-
         result = parse_query(query)
+        grams = quantity_to_grams(result.quantity, result.unit)
 
-        print("\n" + "-" * 70)
-        print(f"Input     : {query}")
+        print(f"\nInput     : {query}")
         print(f"Food      : {result.food}")
         print(f"Quantity  : {result.quantity}")
         print(f"Unit      : {result.unit}")
         print(f"Intent    : {result.intent}")
-
-        grams = quantity_to_grams(
-            result.quantity,
-            result.unit,
-        )
-
         print(f"Grams     : {grams}")
 
-    print("\n" + "=" * 70)
-    print("NLP TEST COMPLETED")
-    print("=" * 70)
+    print("\nNLP TEST COMPLETED")
