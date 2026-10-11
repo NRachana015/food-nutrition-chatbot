@@ -1,4 +1,6 @@
 
+import html
+
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -54,8 +56,12 @@ st.markdown(
         margin-bottom: 0.15rem;
     }
 
-    .sidebar-brand-subtitle {
+    .sidebar-brand-subtitle,
+    .sidebar-description {
         color: #6b7280;
+    }
+
+    .sidebar-brand-subtitle {
         font-size: 0.85rem;
     }
 
@@ -71,7 +77,6 @@ st.markdown(
     .sidebar-description {
         font-size: 0.9rem;
         line-height: 1.55;
-        color: #6b7280;
     }
 
     .status-card {
@@ -156,7 +161,6 @@ if "pending_prompt" not in st.session_state:
 # ============================================================
 
 with st.sidebar:
-
     st.markdown(
         """
         <div class="sidebar-brand">
@@ -300,7 +304,6 @@ st.markdown(
 # ============================================================
 
 with st.expander("🔎 How it works", expanded=False):
-
     columns = st.columns(5)
 
     steps = [
@@ -347,12 +350,14 @@ def display_nutrition_result(result: dict):
         '<div class="result-title">🍎 Nutrition Information</div>',
         unsafe_allow_html=True,
     )
+
     st.markdown(
-        f'<div class="result-food">{matched_food}</div>',
+        f'<div class="result-food">{html.escape(str(matched_food))}</div>',
         unsafe_allow_html=True,
     )
+
     st.markdown(
-        f'<div class="result-amount">{amount_text}</div>',
+        f'<div class="result-amount">{html.escape(amount_text)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -395,21 +400,24 @@ def display_nutrition_result(result: dict):
         ("🍊 Vitamin C", "vitamin_c_mg", "mg"),
     ]
 
-    available = [
-        (label, float(nutrition[key]), unit_name)
-        for label, key, unit_name in additional_nutrients
-        if nutrition.get(key) is not None
-    ]
+    available = []
+
+    for label, key, unit_name in additional_nutrients:
+        value = nutrition.get(key)
+
+        if value is not None:
+            available.append((label, float(value), unit_name))
 
     if available:
         st.markdown("#### 🧪 Additional Nutrients")
+
         columns = st.columns(min(3, len(available)))
 
         for index, (label, value, unit_name) in enumerate(available):
             with columns[index % len(columns)]:
                 st.metric(label, f"{value:.2f} {unit_name}")
 
-    # Improved macronutrient chart
+    # Macronutrient chart
     st.markdown("#### 📈 Macronutrient Profile")
 
     chart_data = pd.DataFrame(
@@ -429,9 +437,9 @@ def display_nutrition_result(result: dict):
         }
     )
 
-    chart_data = chart_data[chart_data["Grams"] > 0].sort_values(
-        "Grams",
-        ascending=True,
+    chart_data = (
+        chart_data[chart_data["Grams"] > 0]
+        .sort_values("Grams", ascending=True)
     )
 
     if not chart_data.empty:
@@ -471,7 +479,38 @@ def display_nutrition_result(result: dict):
         st.plotly_chart(
             fig,
             use_container_width=True,
+            key="nutrition_macronutrient_profile",
         )
+
+        # Download the chart as a PNG image.
+        try:
+            chart_image = fig.to_image(format="png", scale=2)
+
+            st.download_button(
+                label="📥 Download Chart as PNG",
+                data=chart_image,
+                file_name="nutribot_macronutrient_chart.png",
+                mime="image/png",
+                key="download_macronutrient_chart",
+            )
+
+        except Exception:
+            st.info(
+                "PNG export is unavailable. Install the chart export "
+                "dependency and restart the app to enable downloads."
+            )
+
+        # Also provide the chart data as a CSV file.
+        chart_csv = chart_data.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            label="📄 Download Chart Data as CSV",
+            data=chart_csv,
+            file_name="nutribot_macronutrient_data.csv",
+            mime="text/csv",
+            key="download_macronutrient_csv",
+        )
+
     else:
         st.info("No macronutrient values are available to plot.")
 
@@ -492,7 +531,14 @@ def display_nutrition_result(result: dict):
         with columns[2]:
             st.markdown("**Match score**")
             score = result.get("match_score")
-            st.write(f"{score:.2f}" if score is not None else "N/A")
+
+            if score is not None:
+                try:
+                    st.write(f"{float(score):.2f}")
+                except (TypeError, ValueError):
+                    st.write(score)
+            else:
+                st.write("N/A")
 
         st.caption(
             "Nutrition data retrieved from USDA FoodData Central "
@@ -544,11 +590,13 @@ if prompt:
         with st.spinner("🔎 Searching nutrition data..."):
             try:
                 result = chat(prompt)
+
             except Exception:
                 st.error(
                     "Something went wrong while processing your request. "
                     "Please check your connection and try again."
                 )
+
                 result = {
                     "success": False,
                     "message": (
@@ -559,15 +607,18 @@ if prompt:
 
         if result.get("success", False):
             display_nutrition_result(result)
+
             assistant_message = result.get(
                 "message",
                 "Nutrition information found.",
             )
+
         else:
             assistant_message = result.get(
                 "message",
                 "I couldn't find reliable nutrition information.",
             )
+
             st.warning(assistant_message)
 
     st.session_state.messages.append(
