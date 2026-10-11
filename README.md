@@ -1,3 +1,4 @@
+
 # 🥗 Food Nutrition Chatbot Using NLP — NutriBot
 
 <p align="center">
@@ -21,7 +22,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"/>
   <img src="https://img.shields.io/badge/NLP-Natural%20Language%20Processing-8A2BE2?style=flat-square" alt="NLP"/>
   <img src="https://img.shields.io/badge/Streamlit-Web%20Application-FF4B4B?style=flat-square&logo=streamlit&logoColor=white" alt="Streamlit"/>
-  <img src="https://img.shields.io/badge/Data-USDA%20FoodData%20Central-228B22?style=flat-square" alt="USDA"/>
+  <img src="https://img.shields.io/badge/Data-USDA%20FoodData%20Central-228B22?style=flat-square" alt="USDA FoodData Central"/>
   <img src="https://img.shields.io/badge/Testing-Pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white" alt="Pytest"/>
 </p>
 
@@ -41,7 +42,7 @@ The application displays calories, macronutrients, additional nutrients, and a g
 
 **Try NutriBot here:**
 
-👉 https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/
+👉 [Open NutriBot Live Demo](https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/)
 
 The application is deployed using Streamlit Community Cloud.
 
@@ -67,17 +68,17 @@ The application is deployed using Streamlit Community Cloud.
 
 ## 🖥️ Application Screenshots
 
-### 1. NutriBot Dashboard
+### 🏠 Main Dashboard
 
-![NutriBot Dashboard](dashboard.png)
+![NutriBot Main Dashboard](screenshots/dashboard.png)
 
-### 2. Nutrition Information
+### 🍌 Nutrition Result
 
-![NutriBot Nutrition Results](result01.png)
+![Nutrition Result](screenshots/result01.png)
 
-### 3. Additional Nutrition Results
+### 📊 Nutrition Analysis
 
-![NutriBot Additional Results](result02.png)
+![Nutrition Analysis](screenshots/result02.png)
 
 ---
 
@@ -158,14 +159,14 @@ Expected behavior:
   Natural Language Query
          |
          v
-    Streamlit UI
+     Streamlit UI
          |
          v
    NLP Processing
          |
          v
  Food Name & Quantity
-     Identification
+    Identification
          |
          v
  Dynamic USDA API Search
@@ -177,13 +178,13 @@ Expected behavior:
   Nutrition Extraction
          |
          v
- Quantity-Based Calculation
+Quantity-Based Calculation
          |
          v
  Nutrition Summary + Chart
          |
          v
-    User Response
+     User Response
 ```
 
 ---
@@ -215,15 +216,18 @@ food-nutrition-chatbot/
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
+├── README.md
 │
-├── dashboard.png
-├── result01.png
-├── result02.png
+├── screenshots/
+│   ├── dashboard.png
+│   ├── result01.png
+│   └── result02.png
 │
-└── README.md
+└── tests/
+    └── ...
 ```
 
-Additional files, such as tests and configuration files, may also be present in the repository.
+Additional test and configuration files may be present in the repository.
 
 ---
 
@@ -271,7 +275,7 @@ python -m pip install -r requirements.txt
 
 Obtain an API key from the USDA FoodData Central website:
 
-https://fdc.nal.usda.gov/api-guide.html
+[USDA FoodData Central API Guide](https://fdc.nal.usda.gov/api-guide.html)
 
 Create a local `.env` file in the project directory and add:
 
@@ -291,9 +295,7 @@ streamlit run app.py
 
 Open the local URL shown in your terminal, usually:
 
-```text
 http://localhost:8501
-```
 
 ---
 
@@ -362,11 +364,9 @@ The project's previously recorded test run completed with **41 passed**. Run the
   </a>
 </p>
 
-**Project Repository:**  
-https://github.com/NRachana015/food-nutrition-chatbot
+**Project Repository:** [Food Nutrition Chatbot on GitHub](https://github.com/NRachana015/food-nutrition-chatbot)
 
-**Live Demo:**  
-https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/
+**Live Demo:** [Open NutriBot](https://food-nutrition-chatbot-4ys8af95qffyeu48wtu6wm.streamlit.app/)
 
 ---
 
