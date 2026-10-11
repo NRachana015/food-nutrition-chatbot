@@ -1,13 +1,9 @@
+
 """
 NutriBot - USDA FoodData Central Nutrition Service
 
-Features:
-- Dynamic USDA food search
-- Automatic retries for temporary network errors
-- Food-name matching and ranking
-- Nutrition extraction and unit conversion
-- Quantity and serving calculations
-- No hardcoded nutrition database
+Provides dynamic USDA food search, food matching, nutrition extraction,
+per-100-gram nutrition values, and quantity scaling.
 """
 
 import logging
@@ -36,215 +32,85 @@ DATA_TYPE_PRIORITY = {
 
 PREPARATION_WORDS = {
     "raw", "cooked", "boiled", "baked", "fried", "roasted",
-    "grilled", "steamed", "poached", "sauteed", "sautéed",
-    "broiled", "smoked", "dried", "toasted", "scrambled",
-    "microwaved", "braised", "stewed", "barbecued",
-    "barbequed", "pickled", "frozen",
+    "grilled", "steamed", "poached", "sauteed", "broiled",
+    "smoked", "dried", "toasted", "scrambled", "microwaved",
+    "braised", "stewed", "barbecued", "barbequed", "pickled",
+    "frozen",
 }
 
 COMBINATION_TERMS = {
     "casserole", "sandwich", "salad", "pizza", "burger",
     "hamburger", "soup", "stew", "curry", "lasagna",
-    "pasta dish", "fried rice", "burrito", "taco",
-    "pie", "cake", "cookie", "smoothie", "shake",
-    "mixed dish", "baby food dinner",
+    "pasta dish", "fried rice", "burrito", "taco", "pie",
+    "cake", "cookie", "smoothie", "shake", "mixed dish",
+    "chicken kiev", "orange chicken", "almond chicken",
+    "sesame chicken", "fajita", "nachos", "tamale",
+    "barbecue chicken", "barbeque chicken", "taquito",
+    "enchilada", "quesadilla", "biryani", "chimichanga",
+    "kung pao", "general tso", "teriyaki",
 }
 
 GENERIC_WORDS = {
-    "whole", "fresh", "raw", "cooked", "uncooked",
-    "meat", "flesh", "without", "with", "skin",
-    "boneless", "bone", "bone-in", "lean", "only",
-    "including", "excluding", "piece", "pieces",
-    "large", "small", "medium", "ripe", "unripe",
-    "common", "standard", "food", "foods", "edible",
-    "edible portion", "product", "products",
-    "broiler", "broilers", "fryer", "fryers",
-    "young", "roasting", "stewing", "grade",
-    "type", "style", "commercial",
+    "whole", "fresh", "raw", "cooked", "uncooked", "meat",
+    "flesh", "without", "with", "skin", "boneless", "bone",
+    "lean", "only", "including", "excluding", "piece", "pieces",
+    "large", "small", "medium", "ripe", "unripe", "common",
+    "standard", "food", "foods", "edible", "portion", "product",
+    "products", "broiler", "broilers", "fryer", "fryers",
+    "young", "roasting", "stewing", "grade", "type", "style",
+    "commercial", "or", "and",
 }
 
 FOOD_VARIANT_TERMS = {
-    "fat", "feet", "foot", "skin", "liver", "heart",
-    "gizzard", "kidney", "intestine", "bone", "bones",
-    "broth", "stock", "extract", "powder", "flour",
-    "juice", "syrup", "candy", "chips", "snack",
-    "spread", "sauce", "supplement", "formula",
-    "meatless", "imitation", "substitute", "protein",
-    "sausage", "frankfurter", "nugget", "nuggets",
-    "patty", "patties", "jerky", "baby", "dehydrated",
-    "freeze", "concentrate", "cracker", "crackers",
+    "fat", "feet", "foot", "skin", "liver", "heart", "gizzard",
+    "kidney", "intestine", "bone", "bones", "broth", "stock",
+    "extract", "powder", "flour", "juice", "syrup", "candy",
+    "chips", "snack", "spread", "sauce", "supplement", "formula",
+    "meatless", "imitation", "substitute", "sausage", "frankfurter",
+    "nugget", "nuggets", "patty", "patties", "jerky", "baby",
+    "dehydrated", "concentrate", "cracker", "crackers", "tail",
+    "tails", "ground", "back", "backs", "neck", "necks", "wing",
+    "wings", "breast", "thigh", "thighs", "drumstick", "drumsticks",
+    "leg", "legs", "tenderloin", "breaded", "battered", "fajita",
+    "enchilada", "quesadilla", "biryani", "chimichanga", "taquito",
+    "empanada", "cornbread", "gravy", "sesame", "almond", "orange",
+    "teriyaki", "kung", "tso", "barbecue", "barbeque", "curry",
 }
 
-NUTRIENT_MAP = {
+NUTRIENT_NAMES = {
     "calories": {
-        "names": {"energy", "energy kcal", "calories"},
-        "unit": "kcal",
+        "energy", "energy kcal", "calories",
     },
     "protein_g": {
-        "names": {"protein", "protein g"},
-        "unit": "g",
+        "protein",
     },
     "carbohydrates_g": {
-        "names": {
-            "carbohydrate by difference", "carbohydrates",
-            "carbohydrate total", "total carbohydrate",
-        },
-        "unit": "g",
+        "carbohydrate by difference", "carbohydrates",
+        "carbohydrate total", "total carbohydrate",
     },
     "fat_g": {
-        "names": {"total lipid fat", "total fat", "fat"},
-        "unit": "g",
+        "total lipid fat", "total fat", "fat",
     },
     "fiber_g": {
-        "names": {"fiber total dietary", "total dietary fiber"},
-        "unit": "g",
+        "fiber total dietary", "total dietary fiber",
     },
     "sugar_g": {
-        "names": {
-            "sugars total including nlea", "total sugars",
-            "sugars total",
-        },
-        "unit": "g",
+        "sugars total including nlea", "total sugars",
+        "sugars total",
     },
     "calcium_mg": {
-        "names": {"calcium ca", "calcium"},
-        "unit": "mg",
+        "calcium ca", "calcium",
     },
     "iron_mg": {
-        "names": {"iron fe", "iron"},
-        "unit": "mg",
+        "iron fe", "iron",
     },
     "sodium_mg": {
-        "names": {"sodium na", "sodium"},
-        "unit": "mg",
+        "sodium na", "sodium",
     },
     "vitamin_c_mg": {
-        "names": {
-            "vitamin c total ascorbic acid", "vitamin c",
-        },
-        "unit": "mg",
+        "vitamin c total ascorbic acid", "vitamin c",
     },
 }
-
-
-# ============================================================
-# ERRORS AND API REQUESTS
-# ============================================================
-
-class USDAConnectionError(RuntimeError):
-    """USDA could not be reached or returned an invalid response."""
-
-
-def _api_key() -> str:
-    key = str(USDA_API_KEY or "").strip()
-    if not key:
-        raise RuntimeError(
-            "USDA_API_KEY is missing. Check your local .env configuration."
-        )
-    return key
-
-
-def _base_url() -> str:
-    return str(USDA_BASE_URL).rstrip("/")
-
-
-def _request_json(
-    url: str,
-    params: dict[str, Any],
-) -> dict[str, Any]:
-    """Request USDA JSON with retries for transient connection errors."""
-    last_error = None
-
-    for attempt in range(MAX_RETRIES):
-        try:
-            response = requests.get(
-                url,
-                params=params,
-                timeout=REQUEST_TIMEOUT,
-            )
-            response.raise_for_status()
-
-            payload = response.json()
-            if not isinstance(payload, dict):
-                raise USDAConnectionError(
-                    "USDA returned an invalid response."
-                )
-
-            return payload
-
-        except requests.RequestException as exc:
-            last_error = exc
-
-            status = (
-                exc.response.status_code
-                if isinstance(exc, requests.HTTPError)
-                and exc.response is not None
-                else None
-            )
-
-            retryable_status = status in {429, 500, 502, 503, 504}
-            retryable_connection = isinstance(
-                exc,
-                (requests.ConnectionError, requests.Timeout),
-            )
-
-            if not (retryable_connection or retryable_status):
-                raise USDAConnectionError(
-                    f"USDA request failed (HTTP {status}): {exc}"
-                ) from exc
-
-            if attempt < MAX_RETRIES - 1:
-                delay = 1 * (2 ** attempt)
-                logger.warning(
-                    "USDA request failed (attempt %s/%s). "
-                    "Retrying in %s seconds: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    delay,
-                    exc,
-                )
-                time.sleep(delay)
-
-        except ValueError as exc:
-            raise USDAConnectionError(
-                "USDA returned invalid JSON."
-            ) from exc
-
-    raise USDAConnectionError(
-        "Could not connect to USDA after "
-        f"{MAX_RETRIES} attempts. Check your internet/DNS "
-        f"connection and try again. Last error: {last_error}"
-    ) from last_error
-
-
-def search_food(
-    food_name: str,
-    page_size: int = 50,
-) -> list[dict[str, Any]]:
-    """Search USDA FoodData Central dynamically."""
-    if not normalize_text(food_name):
-        return []
-
-    payload = _request_json(
-        f"{_base_url()}/foods/search",
-        {
-            "api_key": _api_key(),
-            "query": str(food_name).strip(),
-            "pageSize": max(1, min(int(page_size), 200)),
-            "pageNumber": 1,
-        },
-    )
-
-    foods = payload.get("foods", [])
-    return foods if isinstance(foods, list) else []
-
-
-def get_food_details(fdc_id: int) -> dict[str, Any]:
-    """Retrieve a complete USDA food record."""
-    return _request_json(
-        f"{_base_url()}/food/{int(fdc_id)}",
-        {"api_key": _api_key()},
-    )
 
 
 # ============================================================
@@ -252,21 +118,18 @@ def get_food_details(fdc_id: int) -> dict[str, Any]:
 # ============================================================
 
 def normalize_text(text: Any) -> str:
+    """Normalize text for consistent matching."""
     if text is None:
         return ""
-
-    value = str(text).lower().strip()
-    value = value.replace("&", " and ")
-    value = re.sub(r"[^a-z0-9\s]", " ", value)
-    value = re.sub(r"\s+", " ", value)
-    return value.strip()
+    text = str(text).lower().strip()
+    text = text.replace("&", " and ")
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def singularize_token(token: str) -> str:
+    """Convert common plural words to singular form."""
     token = normalize_text(token)
-
-    if len(token) <= 3:
-        return token
 
     irregular = {
         "bananas": "banana",
@@ -290,7 +153,6 @@ def singularize_token(token: str) -> str:
         "grapes": "grape",
         "mangoes": "mango",
         "mangos": "mango",
-        "stews": "stew",
         "chickens": "chicken",
         "crackers": "cracker",
         "chips": "chip",
@@ -299,14 +161,16 @@ def singularize_token(token: str) -> str:
     if token in irregular:
         return irregular[token]
 
-    if token.endswith("ies") and len(token) > 4:
+    if len(token) > 4 and token.endswith("ies"):
         return token[:-3] + "y"
 
-    if token.endswith("oes") and len(token) > 4:
+    if len(token) > 4 and token.endswith("oes"):
         return token[:-2]
 
-    if token.endswith("s") and not token.endswith(
-        ("ss", "us", "is")
+    if (
+        len(token) > 3
+        and token.endswith("s")
+        and not token.endswith(("ss", "us", "is"))
     ):
         return token[:-1]
 
@@ -314,6 +178,7 @@ def singularize_token(token: str) -> str:
 
 
 def tokenize(text: Any) -> list[str]:
+    """Return normalized, singularized tokens."""
     return [
         singularize_token(word)
         for word in normalize_text(text).split()
@@ -321,11 +186,8 @@ def tokenize(text: Any) -> list[str]:
     ]
 
 
-def _preparation_tokens() -> set[str]:
-    return {singularize_token(word) for word in PREPARATION_WORDS}
-
-
 def _core_query(query: str) -> str:
+    """Remove preparation words to create an additional search query."""
     tokens = normalize_text(query).split()
     remaining = [
         token for token in tokens
@@ -334,7 +196,7 @@ def _core_query(query: str) -> str:
     return " ".join(remaining) if remaining else normalize_text(query)
 
 
-def _normalized_term_set(terms: set[str]) -> set[str]:
+def _term_tokens(terms: set[str]) -> set[str]:
     return {
         token
         for term in terms
@@ -343,15 +205,127 @@ def _normalized_term_set(terms: set[str]) -> set[str]:
 
 
 # ============================================================
+# USDA API CONNECTION
+# ============================================================
+
+class USDAConnectionError(RuntimeError):
+    """Raised when USDA data cannot be retrieved."""
+
+
+def _get_api_key() -> str:
+    key = str(USDA_API_KEY or "").strip()
+    if not key:
+        raise RuntimeError(
+            "USDA API key is missing. Check your configuration."
+        )
+    return key
+
+
+def _get_base_url() -> str:
+    return str(USDA_BASE_URL).rstrip("/")
+
+
+def _request_json(
+    url: str,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    """Make a USDA request with retries for temporary failures."""
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise USDAConnectionError(
+                    "USDA returned an unexpected response."
+                )
+            return payload
+
+        except requests.RequestException as exc:
+            last_error = exc
+            status = (
+                exc.response.status_code
+                if isinstance(exc, requests.HTTPError)
+                and exc.response is not None
+                else None
+            )
+
+            retryable = (
+                isinstance(
+                    exc,
+                    (requests.ConnectionError, requests.Timeout),
+                )
+                or status in {429, 500, 502, 503, 504}
+            )
+
+            if not retryable:
+                raise USDAConnectionError(
+                    f"USDA request failed: {exc}"
+                ) from exc
+
+            if attempt < MAX_RETRIES - 1:
+                delay = 2 ** attempt
+                logger.warning(
+                    "USDA request failed; retrying in %s seconds.",
+                    delay,
+                )
+                time.sleep(delay)
+
+        except ValueError as exc:
+            raise USDAConnectionError(
+                "USDA returned invalid JSON."
+            ) from exc
+
+    raise USDAConnectionError(
+        "Could not retrieve USDA data after retries. "
+        "Check your internet connection or DNS settings. "
+        f"Last error: {last_error}"
+    ) from last_error
+
+
+def search_food(
+    food_name: str,
+    page_size: int = 50,
+) -> list[dict[str, Any]]:
+    """Search the live USDA FoodData Central database."""
+    if not normalize_text(food_name):
+        return []
+
+    payload = _request_json(
+        f"{_get_base_url()}/foods/search",
+        {
+            "api_key": _get_api_key(),
+            "query": str(food_name).strip(),
+            "pageSize": max(1, min(int(page_size), 200)),
+            "pageNumber": 1,
+        },
+    )
+
+    foods = payload.get("foods", [])
+    return foods if isinstance(foods, list) else []
+
+
+def get_food_details(fdc_id: int) -> dict[str, Any]:
+    """Retrieve the full nutrition record for a USDA food ID."""
+    return _request_json(
+        f"{_get_base_url()}/food/{int(fdc_id)}",
+        {"api_key": _get_api_key()},
+    )
+
+
+# ============================================================
 # FOOD CLASSIFICATION
 # ============================================================
 
-def is_prepared_food(description: str) -> bool:
-    words = set(normalize_text(description).split())
-    return bool(words & PREPARATION_WORDS)
-
-
 def is_combination_food(description: str) -> bool:
+    """Identify foods that are combinations or prepared dishes."""
     normalized = normalize_text(description)
     return any(
         normalize_text(term) in normalized
@@ -363,22 +337,22 @@ def is_specific_food_variant(
     description: str,
     query: str,
 ) -> bool:
+    """Reject unrequested food cuts and variants."""
     query_tokens = set(tokenize(query))
     description_tokens = set(tokenize(description))
 
     if not query_tokens or not description_tokens:
         return False
 
-    extra_words = description_tokens - query_tokens
-    variant_terms = _normalized_term_set(FOOD_VARIANT_TERMS)
+    extra_tokens = description_tokens - query_tokens
+    variant_tokens = _term_tokens(FOOD_VARIANT_TERMS)
+    unrequested_variants = extra_tokens & variant_tokens
 
-    explicitly_requested = query_tokens & variant_terms
-    unrequested_variants = extra_words & variant_terms
-    unrequested_variants -= explicitly_requested
-
-    if "skin" in unrequested_variants:
-        if "meat" in description_tokens:
-            unrequested_variants.discard("skin")
+    if (
+        "skin" in unrequested_variants
+        and "meat" in description_tokens
+    ):
+        unrequested_variants.discard("skin")
 
     return bool(unrequested_variants)
 
@@ -387,70 +361,67 @@ def is_simple_food_match(
     query: str,
     description: str,
 ) -> bool:
-    query_core = set(tokenize(_core_query(query)))
+    """Check whether the query's core words appear in the description."""
+    core_tokens = set(tokenize(_core_query(query)))
     description_tokens = set(tokenize(description))
-    return bool(query_core) and query_core.issubset(description_tokens)
+    return bool(core_tokens) and core_tokens.issubset(description_tokens)
 
 
 # ============================================================
-# MATCH SCORING AND RANKING
+# FOOD MATCH SCORING
 # ============================================================
 
 def score_food_result(
     query: str,
     food: dict[str, Any],
 ) -> float:
+    """Score a USDA food result against the user's query."""
     description = str(food.get("description") or "")
     data_type = str(
         food.get("dataType") or food.get("data_type") or ""
     ).strip().lower()
 
-    query_normalized = normalize_text(query)
-    description_normalized = normalize_text(description)
-    query_tokens = set(tokenize(query_normalized))
-    description_tokens = set(tokenize(description_normalized))
+    normalized_query = normalize_text(query)
+    normalized_description = normalize_text(description)
+
+    query_tokens = set(tokenize(normalized_query))
+    description_tokens = set(tokenize(normalized_description))
 
     if not query_tokens or not description_tokens:
         return 0.0
 
-    query_core = set(tokenize(_core_query(query_normalized)))
-    if not query_core:
-        query_core = query_tokens
+    core_tokens = set(tokenize(_core_query(normalized_query)))
+    if not core_tokens:
+        core_tokens = query_tokens
 
-    if not query_core.issubset(description_tokens):
+    if not core_tokens.issubset(description_tokens):
         return 0.0
-
-    # Reject clearly different forms of the requested food.
-    # Example: boiled rice must not match rice crackers.
-    query_words = set(query_normalized.split())
-    description_words = set(description_normalized.split())
-
-    if "rice" in query_words:
-        if description_words & {
-            "cracker", "crackers", "chips", "chip",
-        }:
-            return 0.0
 
     if is_specific_food_variant(description, query):
         return 0.0
 
     if is_combination_food(description):
-        requested_combination = any(
-            normalize_text(term) in query_normalized
+        requested = any(
+            normalize_text(term) in normalized_query
             for term in COMBINATION_TERMS
         )
-        if not requested_combination:
+        if not requested:
             return 0.0
 
     score = 75.0
 
-    if query_normalized == description_normalized:
+    if normalized_query == normalized_description:
         score += 15.0
     else:
-        preparation_words = _preparation_tokens()
-        query_identity = query_tokens - preparation_words
-        description_identity = description_tokens - preparation_words
-        description_identity -= _normalized_term_set(GENERIC_WORDS)
+        generic_tokens = _term_tokens(GENERIC_WORDS)
+        preparation_tokens = _term_tokens(PREPARATION_WORDS)
+
+        query_identity = query_tokens - preparation_tokens
+        description_identity = (
+            description_tokens
+            - preparation_tokens
+            - generic_tokens
+        )
 
         if query_identity == description_identity:
             score += 12.0
@@ -460,56 +431,53 @@ def score_food_result(
     priority = DATA_TYPE_PRIORITY.get(data_type, 65)
     score += (priority - 65) * 0.25
 
-    query_preparation = (
-        set(query_normalized.split()) & PREPARATION_WORDS
+    query_preparations = (
+        set(normalized_query.split()) & PREPARATION_WORDS
     )
-    description_preparation = (
-        set(description_normalized.split()) & PREPARATION_WORDS
+    description_preparations = (
+        set(normalized_description.split()) & PREPARATION_WORDS
     )
 
-    if query_preparation:
-        if query_preparation.issubset(description_preparation):
+    if query_preparations:
+        if query_preparations.issubset(description_preparations):
             score += 5.0
         else:
             score -= 8.0
-    else:
-        non_neutral = PREPARATION_WORDS - {
-            "raw", "cooked", "frozen",
+    elif description_preparations & (
+        PREPARATION_WORDS - {"raw", "cooked", "frozen"}
+    ):
+        score -= 6.0
+
+    extra_tokens = description_tokens - query_tokens
+    extra_tokens -= _term_tokens(GENERIC_WORDS)
+    extra_tokens -= _term_tokens(PREPARATION_WORDS)
+
+    if len(core_tokens) == 1:
+        cuts = {
+            "breast", "thigh", "wing", "drumstick", "leg",
+            "tender", "tenderloin", "quarter", "half", "back",
         }
-        if description_preparation & non_neutral:
-            score -= 6.0
-
-    extra_words = description_tokens - query_tokens
-    extra_words -= _preparation_tokens()
-    extra_words -= _normalized_term_set(GENERIC_WORDS)
-
-    if len(query_core) == 1:
-        cut_terms = {
-            "breast", "thigh", "wing", "drumstick",
-            "leg", "tender", "tenderloin", "quarter",
-            "half", "back",
-        }
-        extra_words -= cut_terms
-
-        if description_tokens & cut_terms:
+        extra_tokens -= cuts
+        if description_tokens & cuts:
             score -= 10.0
 
-    if extra_words:
-        score -= min(35.0, 4.0 * len(extra_words))
+    score -= min(35.0, 4.0 * len(extra_tokens))
 
     if data_type == "branded":
         score -= 25.0
-        if description_tokens.issubset(query_tokens):
-            score -= 10.0
 
     return round(max(0.0, min(100.0, score)), 2)
 
+
+# ============================================================
+# USDA SEARCH AND RANKING
+# ============================================================
 
 def find_best_food(
     food_name: str,
     page_size: int = 50,
 ) -> list[dict[str, Any]]:
-    """Search and rank USDA results; raise if every request fails."""
+    """Search, deduplicate, score, and rank USDA food records."""
     original_query = normalize_text(food_name)
 
     if not original_query:
@@ -522,55 +490,103 @@ def find_best_food(
         if variant and variant not in query_variants:
             query_variants.append(variant)
 
+    generic_chicken = original_query in {
+        "chicken", "chicken meat",
+    }
+
+    if generic_chicken:
+        for variant in (
+            "chicken meat raw",
+            "broiler chicken raw",
+        ):
+            if variant not in query_variants:
+                query_variants.append(variant)
+
     unique_foods: dict[int, dict[str, Any]] = {}
     successful_searches = 0
-    search_errors = []
+    errors = []
 
     for variant in query_variants:
         try:
-            results = search_food(variant, page_size=page_size)
+            foods = search_food(variant, page_size=page_size)
             successful_searches += 1
-
         except (USDAConnectionError, RuntimeError, ValueError) as exc:
-            logger.warning("USDA search failed for %r: %s", variant, exc)
-            search_errors.append(str(exc))
+            logger.warning(
+                "Search failed for %r: %s", variant, exc
+            )
+            errors.append(str(exc))
             continue
 
-        for food in results:
+        for food in foods:
             fdc_id = food.get("fdcId", food.get("fdc_id"))
             if fdc_id is None:
                 continue
 
             try:
-                numeric_id = int(fdc_id)
+                fdc_id = int(fdc_id)
             except (TypeError, ValueError):
                 continue
 
-            unique_foods.setdefault(numeric_id, food)
+            unique_foods.setdefault(fdc_id, food)
 
-    if successful_searches == 0 and search_errors:
+    if successful_searches == 0 and errors:
         raise USDAConnectionError(
-            "NutriBot could not reach USDA after retrying. "
+            "Could not reach USDA FoodData Central. "
             "The food has not been confirmed missing. "
-            "Check your internet/DNS connection and try again. "
-            + " | ".join(search_errors)
+            "Check your internet connection and retry. "
+            + " | ".join(errors)
         )
 
     ranked = []
 
     for fdc_id, food in unique_foods.items():
+        description = str(food.get("description") or "")
         score = score_food_result(original_query, food)
+
+        if generic_chicken:
+            tokens = set(tokenize(description))
+
+            forbidden_parts = {
+                "tail", "back", "neck", "foot", "wing", "breast",
+                "thigh", "drumstick", "leg", "ground", "liver",
+                "heart", "gizzard", "sausage", "nugget", "tender",
+                "tenderloin", "kiev", "fajita", "enchilada",
+                "quesadilla", "biryani", "chimichanga", "taquito",
+                "empanada", "cornbread", "gravy", "sesame",
+                "almond", "orange", "teriyaki", "curry", "spread",
+                "frankfurter", "meatless", "soup", "stew", "salad",
+                "sandwich", "pizza", "burger", "casserole",
+            }
+
+            generic_record = (
+                "chicken" in tokens
+                and not (tokens & forbidden_parts)
+                and not is_combination_food(description)
+            )
+
+            if generic_record and (
+                "raw" in tokens
+                or "roasting" in tokens
+                or "broiler" in tokens
+                or "fryer" in tokens
+                or "stewing" in tokens
+            ):
+                descriptive_scores = [
+                    score_food_result("chicken meat raw", food),
+                    score_food_result("broiler chicken raw", food),
+                ]
+                score = max([score] + descriptive_scores)
 
         if score < MINIMUM_MATCH_SCORE:
             continue
 
         item = dict(food)
         item["fdc_id"] = fdc_id
-        item["description"] = str(food.get("description") or "")
+        item["description"] = description
         item["data_type"] = str(
             food.get("dataType") or food.get("data_type") or ""
         )
-        item["score"] = score
+        item["score"] = round(score, 2)
         item["data_type_priority"] = DATA_TYPE_PRIORITY.get(
             item["data_type"].strip().lower(), 65
         )
@@ -589,16 +605,16 @@ def find_best_food(
 
 
 # ============================================================
-# NUTRIENT EXTRACTION AND UNIT CONVERSION
+# NUTRIENT EXTRACTION
 # ============================================================
 
-def normalize_unit(unit: Any) -> str:
+def _normalize_unit(unit: Any) -> str:
     value = str(unit or "").strip().lower()
 
     aliases = {
         "kilocalories": "kcal",
         "kilocalorie": "kcal",
-        "calories": "kcal",
+        "calories": "cal",
         "calorie": "cal",
         "grams": "g",
         "gram": "g",
@@ -609,44 +625,25 @@ def normalize_unit(unit: Any) -> str:
         "ug": "µg",
         "mcg": "µg",
         "μg": "µg",
-        "milliliters": "ml",
-        "milliliter": "ml",
         "kilojoule": "kj",
         "kilojoules": "kj",
     }
+
     return aliases.get(value, value)
 
 
-def convert_energy_to_kcal(value: float, unit: Any) -> float:
-    normalized_unit = normalize_unit(unit)
-
-    if normalized_unit == "kj":
-        return value / 4.184
-    if normalized_unit == "cal":
-        return value / 1000.0
-    return value
-
-
-def convert_nutrient_value(
-    value: Any,
-    unit: Any,
+def _convert_value(
+    value: float,
+    source_unit: str,
     target_unit: str,
 ) -> Optional[float]:
-    try:
-        numeric_value = float(value)
-    except (TypeError, ValueError):
-        return None
-
-    if numeric_value < 0:
-        return None
-
-    source = normalize_unit(unit)
-    target = normalize_unit(target_unit)
+    source = _normalize_unit(source_unit)
+    target = _normalize_unit(target_unit)
 
     if source == target:
-        return numeric_value
+        return value
 
-    conversions = {
+    factors = {
         ("g", "mg"): 1000.0,
         ("mg", "g"): 0.001,
         ("mg", "µg"): 1000.0,
@@ -655,21 +652,18 @@ def convert_nutrient_value(
         ("µg", "g"): 0.000001,
     }
 
-    factor = conversions.get((source, target))
-    return numeric_value * factor if factor is not None else None
+    factor = factors.get((source, target))
+    if factor is None:
+        return None
+
+    return value * factor
 
 
 def extract_nutrients(
     food_data: dict[str, Any],
 ) -> dict[str, float]:
-    """
-    Extract nutrients from a complete USDA food-detail response.
-
-    Recognizes Energy, Energy (Atwater General Factors), and other
-    Energy variants. Direct Energy is preferred over alternate
-    energy calculations when both are present.
-    """
-    result = {key: 0.0 for key in NUTRIENT_MAP}
+    """Extract supported nutrients from a USDA food-detail response."""
+    result = {key: 0.0 for key in NUTRIENT_NAMES}
     nutrients = food_data.get("foodNutrients", [])
 
     if not isinstance(nutrients, list):
@@ -677,58 +671,49 @@ def extract_nutrients(
 
     energy_candidates = []
 
-    for nutrient in nutrients:
-        if not isinstance(nutrient, dict):
+    for item in nutrients:
+        if not isinstance(item, dict):
             continue
 
-        nutrient_info = nutrient.get("nutrient", {})
+        nutrient_info = item.get("nutrient", {})
         if not isinstance(nutrient_info, dict):
             nutrient_info = {}
 
         name = normalize_text(
             nutrient_info.get("name")
-            or nutrient.get("nutrientName")
-            or nutrient.get("name")
+            or item.get("nutrientName")
+            or item.get("name")
             or ""
         )
 
         unit = (
             nutrient_info.get("unitName")
-            or nutrient.get("unitName")
-            or nutrient.get("unit")
+            or item.get("unitName")
+            or item.get("unit")
             or ""
         )
 
-        value = nutrient.get("amount")
+        value = item.get("amount")
         if value is None:
-            value = nutrient.get("value")
-
-        if value is None or not name:
-            continue
+            value = item.get("value")
 
         try:
-            numeric_value = float(value)
+            value = float(value)
         except (TypeError, ValueError):
             continue
 
-        if numeric_value < 0:
+        if value < 0:
             continue
 
-        is_energy = (
-            name == "energy"
-            or name.startswith("energy ")
-            or "calorie" in name
-        )
-
-        if is_energy:
-            normalized_unit = normalize_unit(unit)
+        if name.startswith("energy") or "calorie" in name:
+            normalized_unit = _normalize_unit(unit)
 
             if normalized_unit == "kj":
-                kcal = numeric_value / 4.184
+                kcal = value / 4.184
             elif normalized_unit == "kcal":
-                kcal = numeric_value
+                kcal = value
             elif normalized_unit == "cal":
-                kcal = numeric_value / 1000.0
+                kcal = value / 1000.0
             else:
                 continue
 
@@ -736,26 +721,31 @@ def extract_nutrients(
             energy_candidates.append((priority, kcal))
             continue
 
-        for output_key, specification in NUTRIENT_MAP.items():
-            if output_key == "calories":
+        for key, accepted_names in NUTRIENT_NAMES.items():
+            if key == "calories":
                 continue
 
-            accepted_names = {
-                normalize_text(item)
-                for item in specification["names"]
+            normalized_names = {
+                normalize_text(accepted)
+                for accepted in accepted_names
             }
 
-            if name not in accepted_names:
+            if name not in normalized_names:
                 continue
 
-            converted = convert_nutrient_value(
-                numeric_value,
-                unit,
-                specification["unit"],
+            target_unit = (
+                "g" if key.endswith("_g")
+                else "mg"
+            )
+
+            converted = _convert_value(
+                value,
+                str(unit),
+                target_unit,
             )
 
             if converted is not None:
-                result[output_key] = round(converted, 4)
+                result[key] = round(converted, 4)
             break
 
     if energy_candidates:
@@ -771,6 +761,7 @@ def extract_nutrients(
 def has_sufficient_nutrition(
     nutrients: dict[str, Any],
 ) -> bool:
+    """Check whether the record contains useful macronutrient data."""
     if not isinstance(nutrients, dict):
         return False
 
@@ -786,13 +777,15 @@ def has_sufficient_nutrition(
 
 
 # ============================================================
-# SERVING AND PORTION INFORMATION
+# SERVING INFORMATION
 # ============================================================
 
 def extract_serving_information(
     food_data: dict[str, Any],
 ) -> dict[str, Any]:
-    result: dict[str, Any] = {}
+    """Extract USDA serving-size metadata."""
+    result = {}
+
     serving_size = food_data.get("servingSize")
     serving_unit = food_data.get("servingSizeUnit")
 
@@ -811,7 +804,9 @@ def extract_serving_information(
 def extract_food_portions(
     food_data: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Extract portion weights where USDA provides them."""
     portions = food_data.get("foodPortions", [])
+
     if not isinstance(portions, list):
         return []
 
@@ -822,11 +817,11 @@ def extract_food_portions(
             continue
 
         try:
-            gram_weight = float(portion.get("gramWeight"))
+            grams = float(portion.get("gramWeight"))
         except (TypeError, ValueError):
             continue
 
-        if gram_weight <= 0:
+        if grams <= 0:
             continue
 
         measure_unit = portion.get("measureUnit", {})
@@ -834,7 +829,7 @@ def extract_food_portions(
             measure_unit = {}
 
         result.append({
-            "gram_weight": gram_weight,
+            "gram_weight": grams,
             "description": str(
                 portion.get("portionDescription")
                 or portion.get("modifier")
@@ -850,6 +845,7 @@ def extract_food_portions(
 def get_nutrition_basis(
     food_data: dict[str, Any],
 ) -> dict[str, Any]:
+    """Describe the reference quantity used by USDA."""
     return {
         "basis_grams": 100.0,
         "basis_description": "per 100 g",
@@ -859,13 +855,14 @@ def get_nutrition_basis(
 
 
 # ============================================================
-# QUANTITY CALCULATIONS
+# NUTRITION SCALING
 # ============================================================
 
 def calculate_nutrition_for_grams(
     nutrients: dict[str, Any],
     grams: float,
 ) -> dict[str, float]:
+    """Scale nutrition values from 100 g to a requested quantity."""
     try:
         grams = float(grams)
     except (TypeError, ValueError) as exc:
@@ -879,11 +876,9 @@ def calculate_nutrition_for_grams(
 
     for key, value in nutrients.items():
         try:
-            numeric_value = float(value)
+            result[key] = round(float(value) * factor, 4)
         except (TypeError, ValueError):
             continue
-
-        result[key] = round(numeric_value * factor, 4)
 
     return result
 
@@ -894,42 +889,48 @@ def calculate_nutrition_for_serving(
     serving_count: float = 1.0,
     serving_name: Optional[str] = None,
 ) -> dict[str, Any]:
+    """Calculate nutrition for a USDA serving portion."""
     try:
         serving_count = float(serving_count)
     except (TypeError, ValueError) as exc:
-        raise ValueError("Serving count must be a valid number.") from exc
+        raise ValueError(
+            "Serving count must be a valid number."
+        ) from exc
 
     if serving_count < 0:
         raise ValueError("Serving count cannot be negative.")
 
     if not portions:
         raise ValueError(
-            "USDA does not provide serving-weight information "
-            "for this food. Please specify the quantity in grams."
+            "No USDA serving weight is available. "
+            "Please specify the quantity in grams."
         )
 
-    selected_portion = None
+    selected = None
 
     if serving_name:
         requested = normalize_text(serving_name)
+
         for portion in portions:
             description = normalize_text(
                 portion.get("description", "")
             )
             if requested in description or description in requested:
-                selected_portion = portion
+                selected = portion
                 break
 
-    if selected_portion is None:
-        selected_portion = portions[0]
+    if selected is None:
+        selected = portions[0]
 
-    grams = float(selected_portion["gram_weight"]) * serving_count
+    grams = float(selected["gram_weight"]) * serving_count
 
     return {
-        "nutrition": calculate_nutrition_for_grams(nutrients, grams),
+        "nutrition": calculate_nutrition_for_grams(
+            nutrients, grams
+        ),
         "grams": round(grams, 4),
         "serving_count": serving_count,
-        "serving_description": selected_portion.get(
+        "serving_description": selected.get(
             "description", "serving"
         ),
     }
@@ -943,24 +944,24 @@ def get_food_with_nutrition(
     food_name: str,
     page_size: int = 50,
 ) -> Optional[dict[str, Any]]:
-    """Find a USDA record and retrieve its nutrition information."""
+    """Find a matching food and retrieve its complete nutrition data."""
     matches = find_best_food(food_name, page_size=page_size)
 
     if not matches:
         return None
 
-    detail_errors = []
+    errors = []
 
     for match in matches:
         try:
             details = get_food_details(match["fdc_id"])
         except (USDAConnectionError, RuntimeError, ValueError) as exc:
             logger.warning(
-                "Could not retrieve USDA details for %s: %s",
+                "Could not retrieve details for %s: %s",
                 match.get("description"),
                 exc,
             )
-            detail_errors.append(str(exc))
+            errors.append(str(exc))
             continue
 
         nutrients = extract_nutrients(details)
@@ -969,7 +970,6 @@ def get_food_with_nutrition(
             continue
 
         portions = extract_food_portions(details)
-        match_score = match["score"]
 
         return {
             "fdc_id": match["fdc_id"],
@@ -979,20 +979,22 @@ def get_food_with_nutrition(
             "data_type": details.get(
                 "dataType", match["data_type"]
             ),
-            "score": match_score,
-            "match_score": match_score,
+            "score": match["score"],
+            "match_score": match["score"],
             "nutrition": nutrients,
             "nutrients": nutrients,
             "food_data": details,
-            "serving_information": extract_serving_information(details),
+            "serving_information": extract_serving_information(
+                details
+            ),
             "portions": portions,
             "nutrition_basis": get_nutrition_basis(details),
         }
 
-    if detail_errors:
+    if errors:
         raise USDAConnectionError(
-            "USDA search succeeded, but food details could not be "
-            "retrieved. Please retry. " + " | ".join(detail_errors)
+            "USDA search succeeded, but nutrition details could "
+            "not be retrieved. Please try again. " + " | ".join(errors)
         )
 
     return None
@@ -1001,42 +1003,43 @@ def get_food_with_nutrition(
 def get_first_food(
     food_name: str,
 ) -> Optional[dict[str, Any]]:
+    """Return the highest-ranked matching USDA search result."""
     matches = find_best_food(food_name, page_size=50)
     return matches[0] if matches else None
 
 
 # ============================================================
-# MANUAL SEARCH TEST
+# MANUAL TEST
 # ============================================================
 
 if __name__ == "__main__":
-    test_queries = [
-        "boiled egg",
+    queries = [
         "banana",
         "chicken",
         "chicken wings",
-        "boiled rice",
+        "chicken breast",
+        "boiled egg",
     ]
 
-    for query in test_queries:
+    for query in queries:
         print(f"\nQUERY: {query}")
 
         try:
             matches = find_best_food(query)
 
             if not matches:
-                print("No reliable matches found.")
+                print("No reliable matching food found.")
                 continue
 
-            for item in matches[:5]:
+            for food in matches[:5]:
                 print(
-                    item["description"],
-                    "|", item["data_type"],
-                    "|", item["score"],
-                    "| FDC:", item["fdc_id"],
+                    f"Score: {food['score']} | "
+                    f"Type: {food['data_type']} | "
+                    f"Food: {food['description']} | "
+                    f"FDC: {food['fdc_id']}"
                 )
 
         except USDAConnectionError as exc:
-            print(f"USDA CONNECTION ERROR: {exc}")
+            print(f"USDA connection error: {exc}")
         except Exception as exc:
-            print(f"Lookup failed: {exc}")
+            print(f"Unexpected error: {exc}")
